@@ -1,0 +1,42 @@
+---
+title: "Humana Competition Modeling Scripts"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Data cleaning
+ddl: 9.23 12:00pm (give cat variable)
+
+## missing data: 
+<80% imputation(knn, bagging, numerical mean)
+fread()
+## quantitive
+
+## categorical
+sparse data
+
+# Feature Engineering
+ddl: 9.24 9:00 pm
+
+
+# Dataset manipulation (balancing)
+
+
+# Model Selection -
+Tips: scale and regularization before training
+## xgboost
+
+## lightGBM
+
+## other models ...
+
+# parameter tuning for models
+
+
+# Model Evaluation
+ddl: 10.1
+
