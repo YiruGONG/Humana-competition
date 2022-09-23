@@ -8,8 +8,23 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+```{r}
+library(data.table)
+library(readxl)
+library(tidyverse)
+library(VIM)
+```
+
+
 # Data cleaning
 ddl: 9.23 12:00pm (give cat variable)
+
+```{r}
+data = fread('../2022_Competition_Training.csv')
+heading = read_excel('../Humana_Mays_2022_DataDictionary.xlsx', sheet = 'Data Dictionary')
+heading = heading %>% janitor::clean_names()
+```
+
 
 ## missing data: 
 <80% imputation(knn, bagging, numerical mean)
@@ -17,7 +32,41 @@ fread()
 ## quantitive
 
 ## categorical
-sparse data
+!!!sparse data (in the quantitive as well)
+
+```{r}
+## data cleaning
+col_cat = heading[which(heading$data_type=='string'),]$feature_name
+cat = data[,..col_cat] %>% as.data.frame()
+cat[cat=='null'] = NA
+cat = cat %>%
+  mutate_all(as.factor)
+
+## summary
+summary(cat,maxsum = 10)
+```
+
+```{r}
+## replace missing value with KNN
+cat2 = kNN(cat)
+cat22 = cat2 %>% dplyr::select(!ends_with('_imp'))
+summary(cat22)
+
+
+### other method in imputation
+### 1. Hot deck pmm
+library(mice)
+
+start = Sys.time()
+cat3 = mice(cat, m = 5, method = "pmm")
+cat3_all = complete(cat3, "repeated",include = TRUE)
+Sys.time() - start
+### get the mode of repeated imputations
+
+
+```
+
+
 
 # Feature Engineering
 ddl: 9.24 9:00 pm
