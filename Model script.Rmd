@@ -13,6 +13,7 @@ library(data.table)
 library(readxl)
 library(tidyverse)
 library(VIM)
+library(dplyr)
 ```
 
 
@@ -78,6 +79,16 @@ Sys.time() - start
 
 * `cat22` is the final dataset after KNN imputation of categorical data
 * `cat33` is the final dataset after pmm hot-deck imputation of categorical data
+
+### data manipulation
+
+```{r}
+### create metro column, 1 = metro counties, 0 = non-metro counties
+cat_metro = cat22 %>% 
+  mutate(metro = ifelse(grepl("Metro", rucc_category) , 1, 0))
+```
+
+* cat_metro - cat22 dataset with metro column
 
 # Feature Engineering
 ddl: 9.24 9:00 pm
