@@ -67,14 +67,14 @@ Sys.time() - start
 
 ```
 
-
 ```{r}
 ## data manipulation
 ### create metro column, 1 = metro counties, 0 = non-metro counties
-cat_add = cat22 %>% 
+cat_metro = cat22 %>% 
   mutate(metro = ifelse(grepl("Metro", rucc_category) , 1, 0))
 ```
 
+* cat_metro - cat22 dataset with metro column
 
 # Feature Engineering
 ddl: 9.24 9:00 pm
