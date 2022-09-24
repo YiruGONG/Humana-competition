@@ -48,6 +48,12 @@ summary(cat,maxsum = 10)
 ```
 
 ```{r}
+## integers with binary and index
+int_cat = data %>% 
+  select(cms_disabled_ind, cons_hxmioc, cons_hxmboh, cons_stlnindx, cmsd2_men_mad_ind, cms_institutional_ind, cms_hospice_ind, cms_dual_eligible_ind, cons_stlindex, cms_low_income_ind, cms_ma_plan_ind, cons_hxmh, cms_frailty_ind)
+```
+
+```{r}
 ## replace missing value with KNN
 cat2 = kNN(cat)
 cat22 = cat2 %>% dplyr::select(!ends_with('_imp'))
