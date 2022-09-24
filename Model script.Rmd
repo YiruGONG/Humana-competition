@@ -51,7 +51,7 @@ summary(cat,maxsum = 10)
 cat2 = kNN(cat)
 cat22 = cat2 %>% dplyr::select(!ends_with('_imp'))
 summary(cat22)
-
+# load('knn_cat.Rdata')
 
 ### other method in imputation
 ### 1. Hot deck pmm
