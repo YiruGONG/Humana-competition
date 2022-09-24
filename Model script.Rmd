@@ -72,9 +72,16 @@ for (col in col_cat){
     } else return(x[1])
   })
 }
+cat33 = cat33 %>%
+  mutate_all(as.factor)
 
 Sys.time() - start
+```
 
+```{r}
+### compare pmm and KNN
+library(arsenal)
+summary(comparedf(cat22,cat33))
 ```
 
 * `cat22` is the final dataset after KNN imputation of categorical data
