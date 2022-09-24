@@ -56,9 +56,9 @@ int_cat = data %>%
 ```{r}
 ## replace missing value with KNN
 cat2 = kNN(cat)
+# load('knn_cat.Rdata')
 cat22 = cat2 %>% dplyr::select(!ends_with('_imp'))
 summary(cat22)
-# load('knn_cat.Rdata')
 
 ### other method in imputation
 ### 1. Hot deck pmm
@@ -67,14 +67,28 @@ library(mice)
 start = Sys.time()
 cat3 = mice(cat, m = 5, method = "pmm")
 cat3_all = complete(cat3, "repeated",include = TRUE)
-Sys.time() - start
 ### get the mode of repeated imputations
 
+cat33 = data.frame(matrix(ncol = 0, nrow = nrow(cat3_all)))
+for (col in col_cat){
+  subset = cat3_all %>% select(starts_with(col))
+  cat33[,col] = apply(subset, 1, function(x){
+    if ( is.na(x[1]) ){
+      return( names(which.max(table(x[-1]))) ) ## the mode result in repeated pmm
+    } else return(x[1])
+  })
+}
+
+Sys.time() - start
 
 ```
 
+* `cat22` is the final dataset after KNN imputation of categorical data
+* `cat33` is the final dataset after pmm hot-deck imputation of categorical data
+
+### data manipulation
+
 ```{r}
-## data manipulation
 ### create metro column, 1 = metro counties, 0 = non-metro counties
 cat_metro = cat22 %>% 
   mutate(metro = ifelse(grepl("Metro", rucc_category) , 1, 0))
