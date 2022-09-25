@@ -26,7 +26,6 @@ heading = read_excel('../Humana_Mays_2022_DataDictionary.xlsx', sheet = 'Data Di
 heading = heading %>% janitor::clean_names()
 ```
 
-
 ## missing data: 
 <80% imputation(knn, bagging, numerical mean)
 fread()
@@ -115,6 +114,47 @@ cat_metro = cat22 %>%
 ```
 
 * cat_metro - cat22 dataset with metro column
+
+# new full data
+
+```{r}
+new = fread('../training_new.csv')
+# new_cat = new[,..col_cat]
+new = new[,-1]
+
+cat_idx = c(col_cat, int_idx)
+new = new %>% 
+  mutate_at(cat_idx, as.factor)
+
+## summary
+summary(new,maxsum = 15)
+```
+
+```{r}
+### 1. Hot deck pmm imputation
+library(mice)
+
+start = Sys.time()
+pmm = mice(new, m = 5, method = "pmm")
+new_all = complete(pmm, "repeated",include = TRUE)
+### get the mode of repeated imputations
+
+cat33 = data.frame(matrix(ncol = 0, nrow = nrow(cat3_all)))
+for (col in c(col_cat, int_idx) ){
+  subset = cat3_all %>% select(starts_with(col))
+  cat33[,col] = apply(subset, 1, function(x){
+    if ( is.na(x[1]) ){
+      return( names(which.max(table(x[-1]))) ) ## the mode result in repeated pmm
+    } else return(x[1])
+  })
+}
+cat33 = cat33 %>%
+  mutate_all(as.factor)
+
+Sys.time() - start
+```
+
+
 
 # Feature Engineering
 ddl: 9.24 9:00 pm
