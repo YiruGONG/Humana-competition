@@ -127,7 +127,7 @@ Sys.time() - start
 # load("full_imputed.Rdata")
 ```
 
-* `new_imp` is the imputed dataset of all variables selected
+* `new_imp` is the imputed dataset of all variables selected, variable saved in "full_imputed.Rdata"
 
 ## Feature selection
 Jing's second part here
