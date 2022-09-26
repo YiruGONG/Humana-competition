@@ -15,6 +15,7 @@ library(tidyverse)
 library(VIM)
 library(dplyr)
 library(recipes)
+library(caret)
 ```
 
 # Data pre-processing
@@ -132,6 +133,81 @@ Sys.time() - start
 ## Feature selection
 Jing's second part here
 
+```{r}
+new_imp$hi_flag = as.factor(new_imp$hi_flag)
+
+# check na
+# a = new_imp%>% 
+#   summarise_all(funs(sum(is.na(.))))
+
+# impute by median
+new_imp <- new_imp %>% mutate(across(cnt_cp_vat_1, ~replace_na(., median(., na.rm=TRUE))))
+```
+
+
+```{r}
+rfRFE <-  list(summary = defaultSummary,
+               fit = function(x, y, first, last, ...){
+                 library(randomForest)
+                 randomForest(x, y, importance = first, ...)
+                 },
+               pred = function(object, x)  predict(object, x),
+               rank = function(object, x, y) {
+                 vimp <- varImp(object)
+                 vimp <- vimp[order(vimp$Overall,decreasing = TRUE),,drop = FALSE]
+                 vimp$var <- rownames(vimp)                  
+                 vimp
+                 },
+               selectSize = pickSizeBest,
+               selectVar = pickVars)
+
+
+ctrl <- rfeControl(functions = rfRFE, # random forest
+                      method = "repeatedcv", # repeated cv
+                      repeats = 1, # number of repeats
+                      number = 10,
+                   returnResamp = "all") # number of folds
+
+library(doMC)
+registerDoMC(cores = 2)
+```
+
+```{r}
+start = Sys.time()
+
+set.seed(10)
+result_rfe1 <- rfe(x=new_imp[,2:237],y = new_imp$hi_flag, sizes = seq(100,230,10), rfeControl = ctrl)
+
+
+# Print the results
+result_rfe1
+
+Sys.time() - start
+
+```
+
+```{r}
+library(doMC)
+registerDoMC(cores = 2)
+
+set.seed(10)
+result_rfe1 <- rfe(x=select_features[,3:199],y = select_features$id, sizes = seq(100,150,50), rfeControl = ctrl)
+
+
+# Print the results
+result_rfe1
+
+# Print the selected features
+predictors(result_rfe1)
+
+
+
+trellis.par.set(caretTheme())
+plot(result_rfe1, type = c("g", "o"))
+
+# Print the results visually
+
+```
 
 ## Feature Engineering
 
