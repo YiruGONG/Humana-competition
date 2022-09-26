@@ -131,6 +131,7 @@ plot(ldaProfile, type = c("o", "g"))
 
 ```{r}
 
+
 ctrl <- rfeControl(functions = rfRFE, # random forest
                       method = "repeatedcv", # repeated cv
                       repeats = 1, # number of repeats
