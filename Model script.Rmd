@@ -96,9 +96,6 @@ cat = new[,cat_idx]
 all_selected = cbind(select_features,cat) %>% 
   mutate(hi_flag = as.factor(hi_flag))
 
-## test
-all_selected = all_selected %>% select(starts_with("cnt_cp_vat_"), all_of(cat_idx) )
-
 ### 1. Hot deck pmm imputation
 library(mice)
 
