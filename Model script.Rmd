@@ -223,7 +223,7 @@ new_imp_metro = new_imp %>%
 
 * cat_metro - cat22 dataset with metro column
 
-
+ 
 
 # Fairness problem (dataset manipulation)
 Jing and Xingran
