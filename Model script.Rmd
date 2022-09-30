@@ -35,6 +35,9 @@ new = fread('../training_new.csv') %>%
 # new_cat = new[,..col_cat]
 new = new[,-c(1,2)]
 
+heading = read_excel('../Humana_Mays_2022_DataDictionary.xlsx', sheet = 'Data Dictionary')
+heading = heading %>% janitor::clean_names()
+
 ######### change categorical data type to factor
 ## idnex for categorical variable (string + some integer index)
 col_cat = heading[which(heading$data_type=='string'),]$feature_name
@@ -103,7 +106,7 @@ new_all = complete(pmm,"repeated",include = TRUE)
 
 new_imp = data.frame(matrix(ncol = 0, nrow = nrow(new_all)))
 for ( col in colnames(all_selected) ){
-  subset = new_all %>% select(starts_with(col))
+  subset = new_all %>% select(starts_with(paste0(col,'.')))
   new_imp[,col] = apply(subset, 1, function(x){
     if ( is.na(x[1]) ){
       if ( is.character(x[2]) | is.logical(x[2]))
@@ -227,6 +230,7 @@ Jing and Xingran
 
 # Model Selection
 Tips: scale and regularization before training
+Yiru, Jiaqi
 
 ## logistic regression
 
