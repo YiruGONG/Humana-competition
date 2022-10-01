@@ -311,7 +311,6 @@ confusionMatrix(data = factor(test.pred),
 
 ## Random Forest
 
-<<<<<<< HEAD
 ```{r}
 final_rf = final %>% 
 mutate(# rucc_category = gsub("-","_",rucc_category),
@@ -361,16 +360,12 @@ roc.rf <- roc(y2, rf.pred)
 
 roc = 0.7061
 
-## xgboost
-set.seed()
-=======
 ## XGBoost
 ```{r}
 # Load XGBoost package
 require(xgboost)
 set.seed(1)
 x_xgboost = data(final.train, package = "xgboost")
->>>>>>> d0f9e531dd3925cb2c042dd1ad08e8dd242d41e2
 
 ```
 
