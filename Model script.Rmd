@@ -17,6 +17,7 @@ library(dplyr)
 library(recipes)
 library(caret)
 library(xgboost)
+library(pROC)
 ```
 
 # Data pre-processing
@@ -292,6 +293,8 @@ test.pred[test.pred.prob > 0.5] <- "1"
 confusionMatrix(data = factor(test.pred),
                 reference = as.factor(final$hi_flag)[-rowTrain],
                 positive = "1")
+
+roc_lm <- roc(y2, test.pred.prob) ## 0.7262
 ```
 
 
