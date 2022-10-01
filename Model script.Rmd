@@ -433,6 +433,7 @@ roc.lgb <- roc(y2_lgb, lgb_pred)
 ROC = 0.7184
 
 ## XGBoost
+
 ```{r}
 # Convert final data set to matrix
 final_matrix = model.matrix(hi_flag ~., final)[ , -1]
@@ -476,7 +477,7 @@ print(paste("test-error=", err))
 ### test-error= 0.0420289855072464
 ```
 
-### Model Turning (Paramer Tuning)
+### Model Turning 
 ```{r}
 # train an xgboost model
 model_tuned <- xgboost(data = dtrain,       
@@ -488,19 +489,47 @@ model_tuned <- xgboost(data = dtrain,
 ### [2]	train-logloss:0.363968 
 
 # generate predictions for our held-out testing data
-pred <- predict(model_tuned, dtest)
+pred2 <- predict(model_tuned, dtest)
 
 # get & print the classification error
-err2 <- mean(as.numeric(pred > 0.5) != test_labels)
+err2 <- mean(as.numeric(pred2 > 0.5) != test_labels)
 print(paste("test-error=", err2))
 
 ### test-error= 0.0420289855072464
 ```
 
+### Paramer Tuning
 ```{r}
+# get the number of negative & positive cases in our data
+negative_cases <- sum(train_labels == 0) ## 0 = FALSE
+postive_cases <- sum(train_labels == 1) ##1 = TRUE
 
+# train a model using our training data
+model_tuned2 <- xgboost(data = dtrain,           
+                 max.depth = 3, 
+                 nround = 10, 
+                 early_stopping_rounds = 3, 
+                 objective = "binary:logistic",
+                 scale_pos_weight = negative_cases/postive_cases) 
+
+# generate predictions for our held-out testing data
+pred3 <- predict(model_tuned2, dtest)
+
+# get & print the classification error
+err3 <- mean(as.numeric(pred3 > 0.5) != test_labels)
+print(paste("test-error=", err3))
+
+### test-error = 0.296618357487923
 ```
 
+### Model Examining
+```{r}
+library(base)
+library(DiagrammeR)
+# Plot fratures
+xgb.plot.multi.trees(feature_names = names(final_matrix),
+                     model = xgboost_model)
+```
 
 
 ## other models ...
