@@ -16,6 +16,8 @@ library(VIM)
 library(dplyr)
 library(recipes)
 library(caret)
+library(ranger)
+library(pROC)
 ```
 
 # Data pre-processing
@@ -41,11 +43,12 @@ heading = heading %>% janitor::clean_names()
 ######### change categorical data type to factor
 ## idnex for categorical variable (string + some integer index)
 col_cat = heading[which(heading$data_type=='string'),]$feature_name
-int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_institutional_ind", "cms_hospice_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cms_ma_plan_ind", "cons_hxmh", "cms_frailty_ind")
+int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cons_hxmh", "cms_frailty_ind")
 cat_idx = c(col_cat, int_idx)
 
 new = new %>% 
-  mutate_at(cat_idx, as.factor)
+  mutate_at(cat_idx, as.factor) %>% 
+  dplyr::select(- all_of(c("cms_institutional_ind", "cms_hospice_ind", "cms_ma_plan_ind"))) #cat variables with only one level
 
 # num_idx = names(new)[sapply(new,is.numeric)]
 
@@ -233,7 +236,9 @@ Jing and Xingran
 Tips: scale and regularization before training
 
 ```{r}
-final = new_imp_metro
+final = new_imp_metro %>% 
+  dplyr::select(- all_of(c("cms_institutional_ind", "cms_hospice_ind", "cms_ma_plan_ind")))
+summary(final[,cat_idx],maxsum=10)
 
 set.seed(1)
 rowTrain <- createDataPartition(y = final$hi_flag,
@@ -244,7 +249,7 @@ y = final$hi_flag[rowTrain]
 x2 = final[-rowTrain,-1]
 y2 = final$hi_flag[-rowTrain]
 
-save(x,y,x2,y2,file = "split_data.Rdata")
+save(x,y,x2,y2,rowTrain, final, file = "split_data.Rdata")
 ```
 
 
@@ -260,10 +265,132 @@ ctrl <- trainControl(method = "cv",
 
 ## random forest
 
+```{r}
+final_rf = final %>% 
+mutate(# rucc_category = gsub("-","_",rucc_category),
+         # cms_ra_factor_type_cd = recode(cms_ra_factor_type_cd,`*`="unknown"),
+         # lang_spoken_cd = recode(lang_spoken_cd,`*`="unknown"),
+         hi_flag = as.factor(hi_flag) ) %>% 
+  mutate_if(is.factor,function(x) factor(x, labels = make.names(levels(x))))
+
+rf.grid <- expand.grid(mtry = 1:8,
+                       splitrule = "gini",
+                       min.node.size = seq(from = 2, to = 10,
+                                           by = 2))
+
+rf.fit <- train(hi_flag ~ .,
+                data = final_rf,
+                subset = rowTrain,
+                method = "ranger",
+                tuneGrid = rf.grid,
+                metric = "ROC",
+                trControl = ctrl)
+
+ggplot(rf.fit, highlight = TRUE)
+```
+
+```{r}
+# variable importance
+rf2.final.per <- ranger(hi_flag ~ . ,
+                final_rf[rowTrain,],
+                mtry = rf.fit$bestTune[[1]],
+                min.node.size = rf.fit$bestTune[[3]],
+                splitrule = "gini",
+                importance = "permutation",
+                scale.permutation.importance = TRUE)
+
+par(mar = c(3,12,3,3))
+barplot(sort(ranger::importance(rf2.final.per), decreasing = FALSE)[1:20],
+        las = 2, horiz = TRUE, cex.names = 0.7, 
+        col = colorRampPalette(colors = c("cyan","blue"))(10))
+```
+
+```{r}
+## test
+# rf.pred <- predict(rf.fit, newdata = data[-rowTrain,], type = "raw")
+rf.pred <- predict(rf.fit, newdata = final_rf[-rowTrain,], type = "prob")[,2]
+roc.rf <- roc(y2, rf.pred)
+```
+
+roc = 0.7061
+
 ## xgboost
 set.seed()
 
 ## lightGBM
+
+```{r}
+library(Matrix)
+library(lightgbm)
+library(MLmetrics)
+
+final_lgb = final %>% 
+  mutate(hi_flag = as.numeric(hi_flag)) %>% 
+  mutate_if(is.factor, as.numeric) %>% 
+  as.matrix()
+  
+
+lgb_train = lgb.Dataset(data=final_lgb[rowTrain,-1],
+                        label=final_lgb[rowTrain,1],
+                        categorical_feature = cat_idx)
+
+x2_lgb = final_lgb[-rowTrain,-1]
+y2_lgb = final_lgb[-rowTrain,1]
+lgb_test = lgb.Dataset(data=x2_lgb,
+                       label=y2_lgb,
+                       categorical_feature = cat_idx)
+```
+
+```{r}
+lgb.grid = list(objective = "binary",
+                metric = "auc",
+                min_sum_hessian_in_leaf = 1,
+                feature_fraction = 0.7,
+                bagging_fraction = 0.7,
+                bagging_freq = 5,
+                min_data = 100,
+                max_bin = 50,
+                lambda_l1 = 8,
+                lambda_l2 = 1.3,
+                min_data_in_bin=100,
+                min_gain_to_split = 10,
+                min_data_in_leaf = 30,
+                is_unbalance = TRUE)
+
+# Evaluation: Gini for Lgb
+lgb.normalizedgini = function(preds, dtrain){
+  actual = getinfo(lgb_train, "label")
+  score  = NormalizedGini(preds,actual)
+  return(list(name = "gini", value = score, higher_better = TRUE))
+}
+```
+
+```{r}
+start = Sys.time()
+start
+
+lgb.model.cv = lgb.cv(params = lgb.grid, data = lgb_train, learning_rate = 0.02, num_leaves = 25,
+                  num_threads = 2 , nrounds = 7000, early_stopping_rounds = 50,
+                  eval_freq = 20, eval = lgb.normalizedgini,
+                  categorical_feature = cat_idx, nfold = 5, stratified = TRUE)
+
+best.iter = lgb.model.cv$best_iter
+
+Sys.time() - start
+```
+
+```{r}
+# Train final model
+lgb.model = lgb.train(params = lgb.grid, data = lgb_train, learning_rate = 0.02,
+                      num_leaves = 25, num_threads = 2 , nrounds = best.iter,
+                      eval_freq = 20, eval = lgb.normalizedgini,
+                      categorical_feature = cat_idx)
+
+lgb_pred = predict(lgb.model,x2_lgb)
+roc.lgb <- roc(y2_lgb, lgb_pred)
+```
+
+ROC = 0.7184
 
 ## other models ...
 
