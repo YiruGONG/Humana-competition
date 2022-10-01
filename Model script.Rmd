@@ -239,12 +239,14 @@ set.seed(1)
 rowTrain <- createDataPartition(y = final$hi_flag,
                                 p = 0.7,
                                 list = FALSE)
-x = final[rowTrain,-1]
-y = final$hi_flag[rowTrain]
-x2 = final[-rowTrain,-1]
+x = final[rowTrain,-1]  ## training data
+y = final$hi_flag[rowTrain]   
+x2 = final[-rowTrain,-1]   ## testing data
 y2 = final$hi_flag[-rowTrain]
 
 save(x,y,x2,y2,file = "split_data.Rdata")
+
+# load("split_data.Rdata")
 ```
 
 
@@ -255,13 +257,34 @@ ctrl <- trainControl(method = "cv",
                      summaryFunction = twoClassSummary,
                      classProbs = TRUE)
 
+# Fit logistic regression model
+lm.fit <- lm(hi_flag ~ ., 
+         data = final,
+         subset = rowTrain)
+
+# Evaluate lm performance on test data
+test.pred.prob <- predict(lm.fit, 
+                         newdata = final[-rowTrain,],
+                         type = "response")
+
+test.pred <- rep("0", length(test.pred.prob))
+test.pred[test.pred.prob > 0.5] <- "1"
+
+confusionMatrix(data = factor(test.pred),
+                reference = as.factor(final$hi_flag)[-rowTrain],
+                positive = "1")
+
 ```
 
 
 ## random forest
 
 ## xgboost
+```{r}
 set.seed()
+
+
+```
 
 ## lightGBM
 
