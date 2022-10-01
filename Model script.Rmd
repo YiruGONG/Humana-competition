@@ -127,7 +127,7 @@ new_imp = new_imp %>%
 
 Sys.time() - start
 
-# save(new_imp,file = "full_imputed.Rdata")
+save(new_imp,file = "full_imputed.Rdata")
 # load("full_imputed.Rdata")
 ```
 
