@@ -8,7 +8,7 @@ output: pdf_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-```{r}
+```{r, warning=FALSE}
 library(data.table)
 library(readxl)
 library(tidyverse)
@@ -16,6 +16,7 @@ library(VIM)
 library(dplyr)
 library(recipes)
 library(caret)
+library(xgboost)
 ```
 
 # Data pre-processing
@@ -40,7 +41,7 @@ heading = heading %>% janitor::clean_names()
 
 ######### change categorical data type to factor
 ## idnex for categorical variable (string + some integer index)
-col_cat = heading[which(heading$data_type=='string'),]$feature_name
+col_cat = heading[which(heading$data_type == 'string'),]$feature_name
 int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_institutional_ind", "cms_hospice_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cms_ma_plan_ind", "cons_hxmh", "cms_frailty_ind")
 cat_idx = c(col_cat, int_idx)
 
@@ -60,7 +61,7 @@ Jing's part
 
 ```{r}
 data_num <- new[ ,unlist(lapply(new, is.numeric))]
-column_limit_na = names(which(colSums(is.na(data_num))<10000))
+column_limit_na = names(which(colSums(is.na(data_num)) < 10000))
 data_have_limit_na = data_num[,column_limit_na]
 
 data_num2 = data_have_limit_na %>% 
@@ -249,8 +250,25 @@ save(x,y,x2,y2,file = "split_data.Rdata")
 # load("split_data.Rdata")
 ```
 
+# Imbalanced Data Processing with SMOTE
+```{r}
+table(final$hi_flag)
 
-## logistic regression
+predictor_variables <- final[-1]
+response_variable <- final$hi_flag
+
+# running smote function on data
+Smote_data <- ubBalance(predictor_variables, 
+                        response_variable, 
+                        type = 'ubSMOTE',     
+                        k = 3,              # How many neighbouring data points to consider
+                        percOver = 2180.45, # Percentage of minority cases 46182/2118 *100
+                        percUnder = 100,    # Percentage of majority cases default 100
+                        verbose = TRUE)
+```
+
+
+## Logistic Regression (Baseline)
 
 ```{r}
 ctrl <- trainControl(method = "cv",
@@ -260,7 +278,8 @@ ctrl <- trainControl(method = "cv",
 # Fit logistic regression model
 lm.fit <- lm(hi_flag ~ ., 
          data = final,
-         subset = rowTrain)
+         subset = rowTrain,
+         metric = "ROC")
 
 # Evaluate lm performance on test data
 test.pred.prob <- predict(lm.fit, 
@@ -273,20 +292,28 @@ test.pred[test.pred.prob > 0.5] <- "1"
 confusionMatrix(data = factor(test.pred),
                 reference = as.factor(final$hi_flag)[-rowTrain],
                 positive = "1")
-
 ```
 
 
-## random forest
+## Random Forest
 
-## xgboost
+## XGBoost
 ```{r}
-set.seed()
-
+# Load XGBoost package
+require(xgboost)
+set.seed(1)
+x_xgboost = data(final.train, package = "xgboost")
 
 ```
 
-## lightGBM
+
+```{r}
+# Convert the cleaned dataframe to a dmatrix
+dtrain <- xgb.DMatrix(data = x, label = y)
+dtest <- xgb.DMatrix(data = x2, label = y2)
+```
+
+## LightGBM
 
 ## other models ...
 
