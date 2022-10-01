@@ -18,9 +18,12 @@ library(recipes)
 library(caret)
 library(ranger)
 library(pROC)
+<<<<<<< HEAD
 library(xgboost)
 library(keras)
 library(tfruns)
+=======
+>>>>>>> 3b7a729a24b3e71e771fdbe35336cd2d9900e3c3
 ```
 
 # Data pre-processing
@@ -45,8 +48,18 @@ heading = heading %>% janitor::clean_names()
 
 ######### change categorical data type to factor
 ## idnex for categorical variable (string + some integer index)
+<<<<<<< HEAD
 col_cat = heading[which(heading$data_type=='string'),]$feature_name
 int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cons_hxmh", "cms_frailty_ind")
+=======
+
+col_cat = heading[which(heading$data_type=='string'),]$feature_name
+int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cons_hxmh", "cms_frailty_ind")
+
+col_cat = heading[which(heading$data_type == 'string'),]$feature_name
+int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_institutional_ind", "cms_hospice_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cms_ma_plan_ind", "cons_hxmh", "cms_frailty_ind")
+
+>>>>>>> 3b7a729a24b3e71e771fdbe35336cd2d9900e3c3
 cat_idx = c(col_cat, int_idx)
 
 new = new %>% 
@@ -253,6 +266,10 @@ x2 = final[-rowTrain,-1]   ## testing data
 y2 = final$hi_flag[-rowTrain]
 
 save(x,y,x2,y2,rowTrain, final, file = "split_data.Rdata")
+<<<<<<< HEAD
+=======
+save(x,y,x2,y2,file = "split_data.Rdata")
+>>>>>>> 3b7a729a24b3e71e771fdbe35336cd2d9900e3c3
 
 # load("split_data.Rdata")
 ```
@@ -299,6 +316,8 @@ test.pred[test.pred.prob > 0.5] <- "1"
 confusionMatrix(data = factor(test.pred),
                 reference = as.factor(final$hi_flag)[-rowTrain],
                 positive = "1")
+
+roc_lm <- roc(y2, test.pred.prob) ## 0.7262
 ```
 
 
@@ -353,22 +372,6 @@ roc.rf <- roc(y2, rf.pred)
 
 roc = 0.7061
 
-## XGBoost
-```{r}
-# Load XGBoost package
-require(xgboost)
-set.seed(1)
-x_xgboost = data(final.train, package = "xgboost")
-
-```
-
-
-```{r}
-# Convert the cleaned dataframe to a dmatrix
-dtrain <- xgb.DMatrix(data = x, label = y)
-dtest <- xgb.DMatrix(data = x2, label = y2)
-```
-
 ## LightGBM
 
 ```{r}
@@ -380,7 +383,6 @@ final_lgb = final %>%
   mutate_if(is.factor, as.numeric) %>% 
   as.matrix()
   
-
 lgb_train = lgb.Dataset(data=final_lgb[rowTrain,-1],
                         label=final_lgb[rowTrain,1],
                         categorical_feature = cat_idx)
@@ -528,6 +530,122 @@ roc(y2_lgb, lgb_pred)
 ```
 
 ROC = 0.7296
+
+## XGBoost
+
+```{r}
+# Convert final data set to matrix
+final_matrix = model.matrix(hi_flag ~., final)[ , -1]
+
+# get the numb 70/30 training test split
+train_samples <- round(length(final$hi_flag) * .7)
+
+# training data
+train_data <- final_matrix[1:train_samples,]
+train_labels <- final$hi_flag[1:train_samples]
+
+# testing data
+test_data <- final_matrix[-(1:train_samples),]
+test_labels <- final$hi_flag[-(1:train_samples)]
+
+# Load XGBoost package
+library(xgboost)
+
+# Convert the cleaned dataframe to a matrix
+dtrain <- xgb.DMatrix(data = train_data, label = train_labels)
+dtest <- xgb.DMatrix(data = test_data, label = test_labels)
+```
+
+### Model Training
+```{r}
+# train a model using our training data
+xgboost_model <- xgboost(data = dtrain,   
+                 nround = 2, 
+                 objective = "binary:logistic")  
+
+### [1]	train-logloss:0.478371 
+### [2]	train-logloss:0.360748 
+
+# generate predictions for our held-out testing data
+pred <- predict(xgboost_model, dtest)
+
+# get & print the classification error
+err <- mean(as.numeric(pred > 0.5) != test_labels)
+print(paste("test-error=", err))
+
+### test-error= 0.0420289855072464
+
+# ROC
+roc_xgboost <- roc(test_labels, pred) ## 0.7031
+```
+
+### Model Turning 
+```{r}
+# train an xgboost model
+model_tuned <- xgboost(data = dtrain,       
+                 max.depth = 3, 
+                 nround = 2, 
+                 objective = "binary:logistic") 
+
+### [1]	train-logloss:0.479854 
+### [2]	train-logloss:0.363968 
+
+# generate predictions for our held-out testing data
+pred2 <- predict(model_tuned, dtest)
+
+# get & print the classification error
+err2 <- mean(as.numeric(pred2 > 0.5) != test_labels)
+print(paste("test-error=", err2))
+
+### test-error= 0.0420289855072464
+
+# ROC
+roc_xgboost2 <- roc(test_labels, pred2) ## 0.6938
+```
+
+### Paramer Tuning
+```{r}
+# get the number of negative & positive cases in our data
+negative_cases <- sum(train_labels == 0) ## 0 = FALSE
+postive_cases <- sum(train_labels == 1) ##1 = TRUE
+
+# train a model using our training data
+model_tuned2 <- xgboost(data = dtrain,           
+                 max.depth = 3, 
+                 nround = 10, 
+                 early_stopping_rounds = 3, 
+                 objective = "binary:logistic",
+                 scale_pos_weight = negative_cases/postive_cases,
+                 gamma = 1) 
+
+# generate predictions for our held-out testing data
+pred3 <- predict(model_tuned2, dtest)
+
+# get & print the classification error
+err3 <- mean(as.numeric(pred3 > 0.5) != test_labels)
+print(paste("test-error=", err3))
+
+### test-error = 0.296618357487923
+
+# ROC
+roc_xgboost3 <- roc(test_labels, pred3) ## 0.7268
+```
+
+### Model Examining
+```{r}
+library(base)
+library(DiagrammeR)
+# Plot fratures
+xgb.plot.multi.trees(feature_names = names(final_matrix),
+                     model = xgboost_model)
+
+# Get information on how important each feature is
+importance_matrix <- xgb.importance(names(final_matrix), model = xgboost_model)
+
+# Important plot 
+xgb.plot.importance(importance_matrix)
+```
+
 
 ## Neural Networks
 
