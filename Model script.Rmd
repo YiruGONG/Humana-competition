@@ -19,6 +19,8 @@ library(caret)
 library(ranger)
 library(pROC)
 library(xgboost)
+library(keras)
+library(tfruns)
 ```
 
 # Data pre-processing
@@ -43,13 +45,8 @@ heading = heading %>% janitor::clean_names()
 
 ######### change categorical data type to factor
 ## idnex for categorical variable (string + some integer index)
-<<<<<<< HEAD
 col_cat = heading[which(heading$data_type=='string'),]$feature_name
 int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cons_hxmh", "cms_frailty_ind")
-=======
-col_cat = heading[which(heading$data_type == 'string'),]$feature_name
-int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_institutional_ind", "cms_hospice_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cms_ma_plan_ind", "cons_hxmh", "cms_frailty_ind")
->>>>>>> d0f9e531dd3925cb2c042dd1ad08e8dd242d41e2
 cat_idx = c(col_cat, int_idx)
 
 new = new %>% 
@@ -255,10 +252,7 @@ y = final$hi_flag[rowTrain]
 x2 = final[-rowTrain,-1]   ## testing data
 y2 = final$hi_flag[-rowTrain]
 
-<<<<<<< HEAD
 save(x,y,x2,y2,rowTrain, final, file = "split_data.Rdata")
-=======
-save(x,y,x2,y2,file = "split_data.Rdata")
 
 # load("split_data.Rdata")
 ```
@@ -278,7 +272,6 @@ Smote_data <- ubBalance(predictor_variables,
                         percOver = 2180.45, # Percentage of minority cases 46182/2118 *100
                         percUnder = 100,    # Percentage of majority cases default 100
                         verbose = TRUE)
->>>>>>> d0f9e531dd3925cb2c042dd1ad08e8dd242d41e2
 ```
 
 
@@ -379,7 +372,6 @@ dtest <- xgb.DMatrix(data = x2, label = y2)
 ## LightGBM
 
 ```{r}
-library(Matrix)
 library(lightgbm)
 library(MLmetrics)
 
@@ -428,33 +420,166 @@ lgb.normalizedgini = function(preds, dtrain){
 start = Sys.time()
 start
 
-lgb.model.cv = lgb.cv(params = lgb.grid, data = lgb_train, learning_rate = 0.02, num_leaves = 25,
+lgb.model.cv = lgb.cv(params = lgb.grid, data = lgb_train, learning_rate = 0.01, num_leaves = 25,is_unbalance = TRUE,
                   num_threads = 2 , nrounds = 7000, early_stopping_rounds = 50,
                   eval_freq = 20, eval = lgb.normalizedgini,
                   categorical_feature = cat_idx, nfold = 5, stratified = TRUE)
 
 best.iter = lgb.model.cv$best_iter
+lgb.model.cv$best_score
 
 Sys.time() - start
 ```
 
+### Grid Tuning
+
+```{r}
+grids = expand.grid(# max_depth = seq(3,15,3),
+                # learning_rate = c(0.01,0.005,0.001),
+                # min_sum_hessian_in_leaf = seq(0.0005,0.01,0.002),
+                feature_fraction = c(0.3,0.5),
+                # lambda_l1 = c(1,2,3),
+                lambda_l2 = c(1:3,1.3, 0.5)
+                # min_gain_to_split = seq(1,15,4),
+                # min_data_in_leaf = c(30,100,500,1000,2000)
+                # bagging_fraction = 0.7,
+                # bagging_freq = 5,
+                # min_data = 100,
+                # max_bin = 50,
+                # min_data_in_bin=100
+                )
+
+start = Sys.time()
+start
+
+performance = data.frame(matrix(ncol = 3, nrow = 0))
+colnames(performance) = c('comb','best_iter', "best_score")
+for (i in c(1:nrow(grids))){
+  lgb.grid = list(objective = "binary",
+                metric = "auc",
+                # max_depth = grids$max_depth[i],
+                learning_rate = 0.01,
+                min_sum_hessian_in_leaf = 1,
+                feature_fraction = grids$feature_fraction[i],
+                bagging_fraction = 0.7,
+                bagging_freq = 5,
+                min_data = 100,
+                max_bin = 50,
+                lambda_l1 = 3,
+                lambda_l2 = grids$lambda_l2[i],
+                min_data_in_bin=100,
+                # min_gain_to_split = grids$min_gain_to_split[i],
+                min_data_in_leaf = 30,
+                # is_unbalance = TRUE,
+                scale_pos_weight = 24)
+  
+  lgb.model.cv = lgb.cv(params = lgb.grid, data = lgb_train, num_leaves = 25,
+                  num_threads = 4 , nrounds = 7000, early_stopping_rounds = 50,
+                  eval_freq = 20, eval = lgb.normalizedgini,
+                  categorical_feature = cat_idx, nfold = 5, stratified = TRUE)
+  record = data.frame(comb=i, 
+                      best_iter=lgb.model.cv$best_iter, 
+                      best_score=lgb.model.cv$best_score)
+  print(record)
+  performance = rbind(performance,record)
+}
+
+best = performance[which.max(performance$best_score),]
+print(best)
+
+p3 = cbind(performance, grids) %>%
+  arrange(desc(best_score))
+
+
+Sys.time() - start
+```
+
+comb best_iter best_score learning_rate feature_fraction lambda_l1 lambda_l2
+  226       359  0.7515991          0.01              0.3         3       1.3
+
 ```{r}
 # Train final model
-lgb.model = lgb.train(params = lgb.grid, data = lgb_train, learning_rate = 0.02,
-                      num_leaves = 25, num_threads = 2 , nrounds = best.iter,
+i = best$comb
+lgb.grid = list(objective = "binary",
+                metric = "auc",
+                # max_depth = grids$max_depth[i],
+                learning_rate = p2$learning_rate[1],
+                min_sum_hessian_in_leaf = 1,
+                feature_fraction = p2$feature_fraction[1],
+                bagging_fraction = 0.7,
+                bagging_freq = 5,
+                min_data = 100,
+                max_bin = 50,
+                lambda_l1 = p2$lambda_l1[1],
+                lambda_l2 = p2$lambda_l2[1],
+                min_data_in_bin=100,
+                # min_gain_to_split = grids$min_gain_to_split[i],
+                min_data_in_leaf = 30,
+                is_unbalance = TRUE)
+                # scale_pos_weight = 24)
+
+lgb.model = lgb.train(params = lgb.grid, data = lgb_train, learning_rate = 0.01, #num_leaves = 25,
+                      num_threads = 2 , nrounds = best$best_iter,
                       eval_freq = 20, eval = lgb.normalizedgini,
                       categorical_feature = cat_idx)
 
 lgb_pred = predict(lgb.model,x2_lgb)
-roc.lgb <- roc(y2_lgb, lgb_pred)
+roc(y2_lgb, lgb_pred)
 ```
 
-ROC = 0.7184
+ROC = 0.7296
 
-## other models ...
+## Neural Networks
 
+```{r}
+# load("split_data.Rdata")
+## tuning
+runs <- tuning_run("keras_grid_search.R", 
+                   flags = list(
+                   nodes_layer1 = c(64, 128, 256),
+                   nodes_layer2 = c(64, 128, 256),
+                   nodes_layer3 = c(64, 128, 256),
+                   dropout_layer1 = c(0.2, 0.3, 0.4),
+                   dropout_layer2 = c(0.2, 0.3, 0.4),
+                   dropout_layer3 = c(0.2, 0.3, 0.4)),
+                   confirm = FALSE,
+                   echo = FALSE,
+                   sample = 0.01) # try more after class
 
-# parameter tuning for models
+best = runs[which.max(runs$metric_val_accuracy),]
+best
+```
+
+```{r}
+model.nn <- keras_model_sequential() %>%
+  layer_dense(units = best$flag_nodes_layer1, activation = "relu", input_shape = ncol(x)) %>%
+  layer_batch_normalization() %>%
+  layer_dropout(rate = best$flag_dropout_layer1) %>%
+  layer_dense(units = best$flag_nodes_layer2, activation = "relu") %>%
+  layer_batch_normalization() %>%
+  layer_dropout(rate = best$flag_dropout_layer2) %>%
+  layer_dense(units = best$flag_nodes_layer3, activation = "relu") %>%
+  layer_batch_normalization() %>%
+  layer_dropout(rate = best$flag_dropout_layer3) %>%
+  layer_dense(units = 2, activation = "sigmoid") %>%
+  compile(loss = "categorical_crossentropy",
+          optimizer = optimizer_rmsprop(), 
+          metrics = "roc") 
+fit.nn = model.nn %>% 
+  fit(x = x, 
+      y = y, 
+      epochs = 50, 
+      batch_size = 256,
+      validation_split = 0.2,
+      callbacks = list(callback_early_stopping(patience = 20),
+                       callback_reduce_lr_on_plateau()),
+      verbose = 2)
+plot(fit.nn)
+
+## testing and evaluation
+score <- model.nn %>% evaluate(x2, y2_c)
+score
+```
 
 
 # Model Evaluation
