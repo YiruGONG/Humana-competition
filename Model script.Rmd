@@ -138,7 +138,7 @@ Jing's second part here
 
 ```{r}
 new_imp$hi_flag = as.factor(new_imp$hi_flag)
-
+levels(new_imp$hi_flag) = c("no","yes")
 # check na
 # a = new_imp%>% 
 #   summarise_all(funs(sum(is.na(.))))
@@ -223,7 +223,7 @@ new_imp_metro = new_imp %>%
 
 * cat_metro - cat22 dataset with metro column
 
-
+ 
 
 # Fairness problem (dataset manipulation)
 Jing and Xingran
