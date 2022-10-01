@@ -475,6 +475,9 @@ err <- mean(as.numeric(pred > 0.5) != test_labels)
 print(paste("test-error=", err))
 
 ### test-error= 0.0420289855072464
+
+# ROC
+roc_xgboost <- roc(test_labels, pred) ## 0.7031
 ```
 
 ### Model Turning 
@@ -496,6 +499,9 @@ err2 <- mean(as.numeric(pred2 > 0.5) != test_labels)
 print(paste("test-error=", err2))
 
 ### test-error= 0.0420289855072464
+
+# ROC
+roc_xgboost2 <- roc(test_labels, pred2) ## 0.6938
 ```
 
 ### Paramer Tuning
@@ -510,7 +516,8 @@ model_tuned2 <- xgboost(data = dtrain,
                  nround = 10, 
                  early_stopping_rounds = 3, 
                  objective = "binary:logistic",
-                 scale_pos_weight = negative_cases/postive_cases) 
+                 scale_pos_weight = negative_cases/postive_cases,
+                 gamma = 1) 
 
 # generate predictions for our held-out testing data
 pred3 <- predict(model_tuned2, dtest)
@@ -520,6 +527,9 @@ err3 <- mean(as.numeric(pred3 > 0.5) != test_labels)
 print(paste("test-error=", err3))
 
 ### test-error = 0.296618357487923
+
+# ROC
+roc_xgboost3 <- roc(test_labels, pred3) ## 0.7268
 ```
 
 ### Model Examining
@@ -529,6 +539,12 @@ library(DiagrammeR)
 # Plot fratures
 xgb.plot.multi.trees(feature_names = names(final_matrix),
                      model = xgboost_model)
+
+# Get information on how important each feature is
+importance_matrix <- xgb.importance(names(final_matrix), model = xgboost_model)
+
+# Important plot 
+xgb.plot.importance(importance_matrix)
 ```
 
 
