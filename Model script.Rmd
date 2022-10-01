@@ -215,6 +215,7 @@ plot(result_rfe1, type = c("g", "o"))
 ## Feature Engineering
 
 ```{r}
+load("full_imputed.Rdata")
 ### create metro column, 1 = metro counties, 0 = non-metro counties
 new_imp_metro = new_imp %>% 
   mutate(metro = ifelse(grepl("Metro", rucc_category) , 1, 0),
@@ -230,9 +231,32 @@ Jing and Xingran
 
 # Model Selection
 Tips: scale and regularization before training
-Yiru, Jiaqi
+
+```{r}
+final = new_imp_metro
+
+set.seed(1)
+rowTrain <- createDataPartition(y = final$hi_flag,
+                                p = 0.7,
+                                list = FALSE)
+x = final[rowTrain,-1]
+y = final$hi_flag[rowTrain]
+x2 = final[-rowTrain,-1]
+y2 = final$hi_flag[-rowTrain]
+
+save(x,y,x2,y2,file = "split_data.Rdata")
+```
+
 
 ## logistic regression
+
+```{r}
+ctrl <- trainControl(method = "cv",
+                     summaryFunction = twoClassSummary,
+                     classProbs = TRUE)
+
+```
+
 
 ## random forest
 
