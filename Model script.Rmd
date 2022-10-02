@@ -18,12 +18,9 @@ library(recipes)
 library(caret)
 library(ranger)
 library(pROC)
-<<<<<<< HEAD
 library(xgboost)
 library(keras)
 library(tfruns)
-=======
->>>>>>> 3b7a729a24b3e71e771fdbe35336cd2d9900e3c3
 ```
 
 # Data pre-processing
@@ -48,10 +45,10 @@ heading = heading %>% janitor::clean_names()
 
 ######### change categorical data type to factor
 ## idnex for categorical variable (string + some integer index)
-<<<<<<< HEAD
+
 col_cat = heading[which(heading$data_type=='string'),]$feature_name
 int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cons_hxmh", "cms_frailty_ind")
-=======
+
 
 col_cat = heading[which(heading$data_type=='string'),]$feature_name
 int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cons_hxmh", "cms_frailty_ind")
@@ -59,12 +56,15 @@ int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "
 col_cat = heading[which(heading$data_type == 'string'),]$feature_name
 int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_institutional_ind", "cms_hospice_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cms_ma_plan_ind", "cons_hxmh", "cms_frailty_ind")
 
->>>>>>> 3b7a729a24b3e71e771fdbe35336cd2d9900e3c3
+col_cat = heading[which(heading$data_type=='string'),]$feature_name
+int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cons_hxmh", "cms_frailty_ind")
+
 cat_idx = c(col_cat, int_idx)
 
+#### ??????? ##########
 new = new %>% 
   mutate_at(cat_idx, as.factor) %>% 
-  dplyr::select(- all_of(c("cms_institutional_ind", "cms_hospice_ind", "cms_ma_plan_ind"))) #cat variables with only one level
+  dplyr::select(-all_of(c("cms_institutional_ind", "cms_hospice_ind", "cms_ma_plan_ind"))) #cat variables with only one level
 
 # num_idx = names(new)[sapply(new,is.numeric)]
 
@@ -106,7 +106,6 @@ select_features = prep(rec1, training = data_num2, retain = TRUE) %>%
   juice(all_outcomes(),all_predictors())
 
 process_select_vec = sort(colnames(select_features))
-
 ```
 
 * `select_features` is the dataset of selected numeric features
@@ -158,6 +157,82 @@ save(new_imp,file = "full_imputed.Rdata")
 ## Feature selection
 Jing's second part here
 
+<<<<<<< HEAD
+=======
+```{r}
+new_imp$hi_flag = as.factor(new_imp$hi_flag)
+levels(new_imp$hi_flag) = c("no","yes")
+# check na
+# a = new_imp%>% 
+#   summarise_all(funs(sum(is.na(.))))
+
+# impute by median
+new_imp <- new_imp %>% mutate(across(cnt_cp_vat_1, ~replace_na(., median(., na.rm=TRUE))))
+```
+
+
+```{r}
+rfRFE <-  list(summary = defaultSummary,
+               fit = function(x, y, first, last, ...){
+                 library(randomForest)
+                 randomForest(x, y, importance = first, ...)
+                 },
+               pred = function(object, x)  predict(object, x),
+               rank = function(object, x, y) {
+                 vimp <- varImp(object)
+                 vimp <- vimp[order(vimp$Overall,decreasing = TRUE),,drop = FALSE]
+                 vimp$var <- rownames(vimp)                  
+                 vimp
+                 },
+               selectSize = pickSizeBest,
+               selectVar = pickVars)
+
+
+ctrl <- rfeControl(functions = rfRFE, # random forest
+                      method = "repeatedcv", # repeated cv
+                      repeats = 1, # number of repeats
+                      number = 10,
+                   returnResamp = "all") # number of folds
+
+library(doMC)
+registerDoMC(cores = 2)
+```
+
+```{r}
+start = Sys.time()
+
+set.seed(10)
+result_rfe1 <- rfe(x=new_imp[,2:237],y = new_imp$hi_flag, sizes = seq(100,230,10), rfeControl = ctrl)
+
+
+# Print the results
+result_rfe1
+
+Sys.time() - start
+
+```
+
+```{r}
+library(doMC)
+registerDoMC(cores = 2)
+
+set.seed(10)
+result_rfe1 <- rfe(x=select_features[,3:199],y = select_features$id, sizes = seq(100,150,50), rfeControl = ctrl)
+
+
+# Print the results
+result_rfe1
+
+# Print the selected features
+predictors(result_rfe1)
+
+trellis.par.set(caretTheme())
+plot(result_rfe1, type = c("g", "o"))
+
+# Print the results visually
+
+```
+>>>>>>> ebe2f41995200d909c5d7d9b2d36229f7b10e034
 
 ## Feature Engineering
 
@@ -181,8 +256,123 @@ Tips: scale and regularization before training
 
 ```{r}
 final = new_imp_metro %>% 
-  dplyr::select(- all_of(c("cms_institutional_ind", "cms_hospice_ind", "cms_ma_plan_ind")))
-summary(final[,cat_idx],maxsum=10)
+  dplyr::select(-all_of(c("cms_institutional_ind", "cms_hospice_ind", "cms_ma_plan_ind")))
+summary(final[,cat_idx],maxsum = 10)
+
+set.seed(1)
+rowTrain <- createDataPartition(y = final$hi_flag,
+                                p = 0.7,
+                                list = FALSE)
+
+x = final[rowTrain,-1]  ## training data
+y = final$hi_flag[rowTrain]   
+x2 = final[-rowTrain,-1]   ## testing data
+y2 = final$hi_flag[-rowTrain]
+```
+
+# Imbalanced Data Processing
+
+### Analysis of Original Dataset
+```{r}
+table(final$hi_flag) # 0: 46182, 1: 2118
+prop.table(table(final$hi_flag))  # 0: 0.956, 1: 0.04
+
+predictor_variables <- final[-1]
+response_variable <- final$hi_flag
+
+library(ROSE)
+library(rpart)
+
+# Original prediction accuracy using decision tree algorithm
+treeimb <- rpart(hi_flag ~ ., data = cbind(x, hi_flag = y))
+pred_treeimb <- predict(treeimb, newdata = cbind(x2, hi_flag = y2))
+
+accuracy.meas(response = y2, predicted = pred_treeimb[,1])
+# F = 0.042 is low and suggests weak accuracy of this model
+
+roc.curve(y2, pred_treeimb[,2], plotit = F) 
+# AUC = 0.5 is a low score, suggesting the poor performance of the model with original data set.
+```
+
+### Data Balancing Models
+```{r}
+# Over sampling
+set.seed(3)
+data_balanced_over <- ovun.sample(hi_flag ~ ., 
+                                  data = cbind(x, hi_flag = y),
+                                  method = "over",
+                                  p = 0.5)$data
+
+table(data_balanced_over$hi_flag)  # 0: 32328 1: 32248
+
+# Under sampling
+set.seed(3)
+data_balanced_under <- ovun.sample(hi_flag ~ ., 
+                                  data = cbind(x, hi_flag = y),
+                                  method = "under",
+                                  p = 0.5)$data
+
+table(data_balanced_under$hi_flag) # 0: 1536 1: 1483
+
+# Both over and under sampling
+set.seed(3)
+data_balanced_both <- ovun.sample(hi_flag ~ ., 
+                                  data = cbind(x, hi_flag = y),
+                                  method = "both",
+                                  p = 0.5)$data
+
+table(data_balanced_both$hi_flag) # 0: 16920 1: 16891
+
+# Data balancing using ROSE
+set.seed(3)
+data_rose <- ROSE(hi_flag ~ ., 
+                  data = cbind(x, hi_flag = y), 
+                  seed = 1)$data
+
+table(data_rose$hi_flag)   # 0: 17000 1: 16811
+```
+
+### Compute Models using Each Data and Evaluate its Accuracy
+```{r}
+#build decision tree models
+tree_rose <- rpart(hi_flag ~ ., data = data_rose)
+tree_over <- rpart(hi_flag ~ ., data = data_balanced_over)
+tree_under <- rpart(hi_flag ~ ., data = data_balanced_under)
+tree_both <- rpart(hi_flag ~ ., data = data_balanced_both)
+
+#make predictions on unseen data
+pred_tree_rose <- predict(tree_rose, newdata = cbind(x2, hi_flag = y2))
+pred_tree_over <- predict(tree_over, newdata = cbind(x2, hi_flag = y2))
+pred_tree_under <- predict(tree_under, newdata = cbind(x2, hi_flag = y2))
+pred_tree_both <- predict(tree_both, newdata = cbind(x2, hi_flag = y2))
+
+# ROC ROSE
+roc.curve(y2, pred_tree_rose[,2])
+# ROC: 0.648
+
+# ROC oversampling
+roc.curve(y2, pred_tree_over[,2])
+# ROC: 0.641
+
+# ROC undersampling
+roc.curve(y2, pred_tree_under[,2])
+# ROC: 0.656
+
+# ROC both
+roc.curve(y2, pred_tree_both[,2])
+# ROC: 0.643
+
+save(data_rose, file = "balanced_data.Rdata")
+
+# load("balanced_data.Rdata")
+```
+
+* We choose ROSE as our method of data balancing
+* Final balanced dataset: data_rose
+
+# Final Balanced Data Set
+```{r}
+final = data_rose
 
 set.seed(1)
 rowTrain <- createDataPartition(y = final$hi_flag,
@@ -193,36 +383,16 @@ y = final$hi_flag[rowTrain]
 x2 = final[-rowTrain,-1]   ## testing data
 y2 = final$hi_flag[-rowTrain]
 
-save(x,y,x2,y2,rowTrain, final, file = "split_data.Rdata")
-<<<<<<< HEAD
-=======
-save(x,y,x2,y2,file = "split_data.Rdata")
->>>>>>> 3b7a729a24b3e71e771fdbe35336cd2d9900e3c3
+save(x,y,x2,y2,rowTrain, final, cat_idx, file = "split_data.Rdata")
 
 # load("split_data.Rdata")
-```
-
-# Imbalanced Data Processing with SMOTE
-```{r}
-table(final$hi_flag)
-
-predictor_variables <- final[-1]
-response_variable <- final$hi_flag
-
-# running smote function on data
-Smote_data <- ubBalance(predictor_variables, 
-                        response_variable, 
-                        type = 'ubSMOTE',     
-                        k = 3,              # How many neighbouring data points to consider
-                        percOver = 2180.45, # Percentage of minority cases 46182/2118 *100
-                        percUnder = 100,    # Percentage of majority cases default 100
-                        verbose = TRUE)
 ```
 
 
 ## Logistic Regression (Baseline)
 
 ```{r}
+
 ctrl <- trainControl(method = "cv",
                      summaryFunction = twoClassSummary,
                      classProbs = TRUE)
@@ -485,16 +655,18 @@ ROC = 0.7296
 # Convert final data set to matrix
 final_matrix = model.matrix(hi_flag ~., final)[ , -1]
 
-# get the numb 70/30 training test split
-train_samples <- round(length(final$hi_flag) * .7)
+# # get the numb 70/30 training test split
+# train_samples <- round(length(final$hi_flag) * .7)
 
 # training data
-train_data <- final_matrix[1:train_samples,]
-train_labels <- final$hi_flag[1:train_samples]
+train_data <- final_matrix[rowTrain,]
+train_labels <- final$hi_flag[rowTrain]
 
 # testing data
-test_data <- final_matrix[-(1:train_samples),]
-test_labels <- final$hi_flag[-(1:train_samples)]
+test_data <- final_matrix[-rowTrain,]
+test_labels <- final$hi_flag[-rowTrain]
+
+save(final_matrix,train_data, train_labels, test_data, test_labels, rowTrain, file = "split_data_matrix.Rdata")
 
 # Load XGBoost package
 library(xgboost)
@@ -545,7 +717,7 @@ pred2 <- predict(model_tuned, dtest)
 err2 <- mean(as.numeric(pred2 > 0.5) != test_labels)
 print(paste("test-error=", err2))
 
-### test-error= 0.0420289855072464
+### test-error = 0.0420289855072464
 
 # ROC
 roc_xgboost2 <- roc(test_labels, pred2) ## 0.6938
@@ -598,7 +770,7 @@ xgb.plot.importance(importance_matrix)
 ## Neural Networks
 
 ```{r}
-# load("split_data.Rdata")
+load("split_data_matrix.Rdata")
 ## tuning
 runs <- tuning_run("keras_grid_search.R", 
                    flags = list(
@@ -617,8 +789,11 @@ best
 ```
 
 ```{r}
+train_labels <- to_categorical(train_labels, 2)
+test_labels <- to_categorical(test_labels, 2)
+
 model.nn <- keras_model_sequential() %>%
-  layer_dense(units = best$flag_nodes_layer1, activation = "relu", input_shape = ncol(x)) %>%
+  layer_dense(units = best$flag_nodes_layer1, activation = "relu", input_shape = ncol(train_data)) %>%
   layer_batch_normalization() %>%
   layer_dropout(rate = best$flag_dropout_layer1) %>%
   layer_dense(units = best$flag_nodes_layer2, activation = "relu") %>%
@@ -630,20 +805,20 @@ model.nn <- keras_model_sequential() %>%
   layer_dense(units = 2, activation = "sigmoid") %>%
   compile(loss = "categorical_crossentropy",
           optimizer = optimizer_rmsprop(), 
-          metrics = "roc") 
+          metrics = "accuracy") 
 fit.nn = model.nn %>% 
-  fit(x = x, 
-      y = y, 
+  fit(x = train_data, 
+      y = train_labels, 
       epochs = 50, 
       batch_size = 256,
       validation_split = 0.2,
-      callbacks = list(callback_early_stopping(patience = 20),
+      callbacks = list(callback_early_stopping(patience = 10),
                        callback_reduce_lr_on_plateau()),
       verbose = 2)
 plot(fit.nn)
 
 ## testing and evaluation
-score <- model.nn %>% evaluate(x2, y2_c)
+score <- model.nn %>% evaluate(test_data, test_labels)
 score
 ```
 
