@@ -753,6 +753,10 @@ roc_xgboost3 <- roc(test_labels, pred3) ## 0.8448
 
 
 ```{r}
+library(mlr)
+```
+
+```{r}
 
 final2 = final
 final2 = final2 %>% 
@@ -783,7 +787,7 @@ xgb_model <- train(xgb_learner, task = trainTask)
 
 
 ```{r}
-library(mlr)
+
 
 xgb_params <- makeParamSet(
   # The number of trees in the model (each one built sequentially)
@@ -796,10 +800,11 @@ xgb_params <- makeParamSet(
   makeNumericParam("lambda", lower = -1, upper = 0, trafo = function(x) 10^x)
 )
 getParamSet("classif.xgboost")
+
 control <- makeTuneControlRandom(maxit = 1)
 
+set.seed(1)
 resample_desc <- makeResampleDesc("CV", iters = 4)
-
 tuned_params <- tuneParams(
   learner = xgb_learner,
   task = trainTask,
@@ -813,6 +818,12 @@ tuned_params <- tuneParams(
 
 # Result: nrounds=272; max_depth=1; eta=0.337; lambda=0.214 : mmce.test.mean=0.0438911
 # 0.737
+
+#balanced
+#[Tune] Result: nrounds=268; max_depth=4; eta=0.125; lambda=0.105 : mmce.test.mean=0.1142048
+# 0.9577
+
+# Result: nrounds=177; max_depth=10; eta=0.308; lambda=0.436 : mmce.test.mean=0.1156836
 ```
 
 ```{r}
