@@ -263,6 +263,35 @@ remove the sensitive features does not nessasarily reduce unfairness.
 Fairness will be measured using the observed Disparity score based on RACE and SEX
 
 ```{r}
+load("full_imputed.Rdata")
+new_imp
+```
+processing:
 
+```{r}
+new_imp$sex_cd
+summary(new_imp$sex_cd)
+```
+
+```{r}
+library(fairness)
+
+res_auc <- roc_parity(data         = df_valid, 
+                      outcome      = 'Two_yr_Recidivism_01', 
+                      group        = 'Female',
+                      probs        = 'prob_1', 
+                      base         = 'Male')
+res_auc$Metric
+```
+
+```{r}
+res_eq <- equal_odds(data         = df_valid, 
+                     outcome      = 'Two_yr_Recidivism_01', 
+                     outcome_base = '0', 
+                     group        = 'ethnicity',
+                     probs        = 'prob_1', 
+                     cutoff       = 0.5, 
+                     base         = 'African_American')  
+res_eq$Metric
 ```
 

@@ -70,6 +70,9 @@ new = new %>%
 
 ## summary
 # summary(new,maxsum = 15)
+
+final$cat_idx = cat_idx
+
 ```
 
 `new` is the cleaned dataset
@@ -425,6 +428,26 @@ comb best_iter best_score learning_rate feature_fraction lambda_l1 lambda_l2
   226       359  0.7515991          0.01              0.3         3       1.3
 
 ```{r}
+lgb.grid = list(objective = "binary",
+                metric = "auc",
+                # max_depth = grids$max_depth[i],
+                learning_rate = 0.01,
+                min_sum_hessian_in_leaf = 1,
+                feature_fraction = 0.3,
+                bagging_fraction = 0.7,
+                bagging_freq = 5,
+                min_data = 100,
+                max_bin = 50,
+                lambda_l1 = 3,
+                lambda_l2 = 1.3,
+                min_data_in_bin=100,
+                # min_gain_to_split = grids$min_gain_to_split[i],
+                min_data_in_leaf = 30,
+                is_unbalance = TRUE)
+                # scale_pos_weight = 24)
+```
+
+```{r}
 # Train final model
 i = best$comb
 lgb.grid = list(objective = "binary",
@@ -446,7 +469,7 @@ lgb.grid = list(objective = "binary",
                 # scale_pos_weight = 24)
 
 lgb.model = lgb.train(params = lgb.grid, data = lgb_train, learning_rate = 0.01, #num_leaves = 25,
-                      num_threads = 2 , nrounds = best$best_iter,
+                      num_threads = 2 , nrounds = 359,
                       eval_freq = 20, eval = lgb.normalizedgini,
                       categorical_feature = cat_idx)
 
@@ -627,4 +650,7 @@ score
 
 # Model Evaluation
 ddl: 10.1
+```{r}
+
+```
 
