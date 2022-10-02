@@ -772,7 +772,7 @@ xgb_learner <- makeLearner(
   predict.type = "prob",
   par.vals = list(
     objective = "binary:logistic",
-    eval_metric = "error",
+    eval_metric = "auc",
     nrounds = 200
   )
 )
@@ -787,11 +787,11 @@ library(mlr)
 
 xgb_params <- makeParamSet(
   # The number of trees in the model (each one built sequentially)
-  makeIntegerParam("nrounds", lower = 200, upper = 600),
+  makeIntegerParam("nrounds", lower = 50, upper = 300),
   # number of splits in each tree
   makeIntegerParam("max_depth", lower = 1, upper = 10),
   # "shrinkage" - prevents overfitting
-  makeNumericParam("eta", lower = .1, upper = .6),
+  makeNumericParam("eta", lower = .01, upper = .4),
   # L2 regularization - prevents overfitting
   makeNumericParam("lambda", lower = -1, upper = 0, trafo = function(x) 10^x)
 )
@@ -808,7 +808,11 @@ tuned_params <- tuneParams(
   control = control
 )
 
-#Tune-x] 1: nrounds=462; max_depth=4; eta=0.312; lambda=0.144
+# Result: nrounds=240; max_depth=3; eta=0.287; lambda=0.586 : mmce.test.mean=0.0452811
+# 0.7025
+
+# Result: nrounds=272; max_depth=1; eta=0.337; lambda=0.214 : mmce.test.mean=0.0438911
+# 0.737
 ```
 
 ```{r}
