@@ -260,21 +260,102 @@ save(x,y,x2,y2,file = "split_data.Rdata")
 # load("split_data.Rdata")
 ```
 
-# Imbalanced Data Processing with SMOTE
+# Imbalanced Data Processing
+
+### Analysis of Original Dataset
 ```{r}
-table(final$hi_flag)
+table(final$hi_flag) # 0: 46182, 1: 2118
+prop.table(table(final$hi_flag))  # 0: 0.956, 1: 0.04
 
 predictor_variables <- final[-1]
 response_variable <- final$hi_flag
 
-# running smote function on data
-Smote_data <- ubBalance(predictor_variables, 
-                        response_variable, 
-                        type = 'ubSMOTE',     
-                        k = 3,              # How many neighbouring data points to consider
-                        percOver = 2180.45, # Percentage of minority cases 46182/2118 *100
-                        percUnder = 100,    # Percentage of majority cases default 100
-                        verbose = TRUE)
+library(ROSE)
+library(rpart)
+
+# Original prediction accuracy using decision tree algorithm
+treeimb <- rpart(hi_flag ~ ., data = cbind(x, hi_flag = y))
+pred.treeimb <- predict(treeimb, newdata = cbind(x2, hi_flag = y2))
+
+accuracy.meas(response = y2, predicted = pred.treeimb[,1])
+# F = 0.042 is low and suggests weak accuracy of this model
+
+roc.curve(y2, pred.treeimb[,2], plotit = F) 
+# AUC = 0.5 is a low score, suggesting the poor performance of the model with original data set.
+```
+
+### Data Balancing Models
+```{r}
+# Over sampling
+data_balanced_over <- ovun.sample(hi_flag ~ ., 
+                                  data = cbind(x, hi_flag = y),
+                                  method = "over",
+                                  p = 0.5)$data
+
+table(data_balanced_over$hi_flag)  # 0: 32328 1: 32511
+
+# Under sampling
+data_balanced_under <- ovun.sample(hi_flag ~ ., 
+                                  data = cbind(x, hi_flag = y),
+                                  method = "under",
+                                  p = 0.5)$data
+
+table(data_balanced_under$hi_flag) # 0: 1448 1: 1483
+
+# Both over and under sampling
+data_balanced_both <- ovun.sample(hi_flag ~ ., 
+                                  data = cbind(x, hi_flag = y),
+                                  method = "both",
+                                  p = 0.5)$data
+
+table(data_balanced_both$hi_flag) # 0: 16873 1: 16938
+
+# Data balancing using ROSE
+data.rose <- ROSE(hi_flag ~ ., 
+                  data = cbind(x, hi_flag = y), 
+                  seed = 1)$data
+
+table(data.rose$hi_flag)   # 0: 17000 1: 16811
+```
+
+### Compute Models using Each Data and Evaluate its Accuracy
+```{r}
+#build decision tree models
+tree.rose <- rpart(hi_flag ~ ., data = data.rose)
+tree.over <- rpart(hi_flag ~ ., data = data_balanced_over)
+tree.under <- rpart(hi_flag ~ ., data = data_balanced_under)
+tree.both <- rpart(hi_flag ~ ., data = data_balanced_both)
+
+#make predictions on unseen data
+pred.tree.rose <- predict(tree.rose, newdata = cbind(x2, hi_flag = y2))
+pred.tree.over <- predict(tree.over, newdata = cbind(x2, hi_flag = y2))
+pred.tree.under <- predict(tree.under, newdata = cbind(x2, hi_flag = y2))
+pred.tree.both <- predict(tree.both, newdata = cbind(x2, hi_flag = y2))
+
+# ROC ROSE
+roc.curve(y2, pred.tree.rose[,2])
+# ROC: 0.648
+
+# ROC oversampling
+roc.curve(y2, pred.tree.over[,2])
+# ROC: 0.641
+
+# ROC undersampling
+roc.curve(y2, pred.tree.under[,2])
+# ROC: 0.656
+
+# ROC both
+roc.curve(y2, pred.tree.both[,2])
+# ROC: 0.643
+```
+
+We choose ROSE as our method of data balancing
+
+###  
+```{r}
+save(data.rose, file = "balanced_data.Rdata")
+
+# load("balanced_data.Rdata")
 ```
 
 
