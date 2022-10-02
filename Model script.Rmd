@@ -18,12 +18,9 @@ library(recipes)
 library(caret)
 library(ranger)
 library(pROC)
-<<<<<<< HEAD
 library(xgboost)
 library(keras)
 library(tfruns)
-=======
->>>>>>> 3b7a729a24b3e71e771fdbe35336cd2d9900e3c3
 ```
 
 # Data pre-processing
@@ -48,10 +45,10 @@ heading = heading %>% janitor::clean_names()
 
 ######### change categorical data type to factor
 ## idnex for categorical variable (string + some integer index)
-<<<<<<< HEAD
+
 col_cat = heading[which(heading$data_type=='string'),]$feature_name
 int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cons_hxmh", "cms_frailty_ind")
-=======
+
 
 col_cat = heading[which(heading$data_type=='string'),]$feature_name
 int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cons_hxmh", "cms_frailty_ind")
@@ -59,7 +56,6 @@ int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "
 col_cat = heading[which(heading$data_type == 'string'),]$feature_name
 int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_institutional_ind", "cms_hospice_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cms_ma_plan_ind", "cons_hxmh", "cms_frailty_ind")
 
->>>>>>> 3b7a729a24b3e71e771fdbe35336cd2d9900e3c3
 cat_idx = c(col_cat, int_idx)
 
 new = new %>% 
@@ -222,8 +218,6 @@ result_rfe1
 # Print the selected features
 predictors(result_rfe1)
 
-
-
 trellis.par.set(caretTheme())
 plot(result_rfe1, type = c("g", "o"))
 
@@ -266,10 +260,8 @@ x2 = final[-rowTrain,-1]   ## testing data
 y2 = final$hi_flag[-rowTrain]
 
 save(x,y,x2,y2,rowTrain, final, file = "split_data.Rdata")
-<<<<<<< HEAD
-=======
+
 save(x,y,x2,y2,file = "split_data.Rdata")
->>>>>>> 3b7a729a24b3e71e771fdbe35336cd2d9900e3c3
 
 # load("split_data.Rdata")
 ```
@@ -361,17 +353,14 @@ roc.curve(y2, pred.tree.under[,2])
 # ROC both
 roc.curve(y2, pred.tree.both[,2])
 # ROC: 0.643
-```
 
-We choose ROSE as our method of data balancing
-
-###  
-```{r}
 save(data.rose, file = "balanced_data.Rdata")
 
 # load("balanced_data.Rdata")
 ```
 
+* We choose ROSE as our method of data balancing
+* Final balanced dataset: data.rose
 
 ## Logistic Regression (Baseline)
 
@@ -615,6 +604,13 @@ ROC = 0.7296
 ## XGBoost
 
 ```{r}
+###### XGBoost Model with balanced dataset
+balanced_final_matrix = model.matrix(hi_flag ~., data.rose)[ , -1]
+
+```
+
+
+```{r}
 # Convert final data set to matrix
 final_matrix = model.matrix(hi_flag ~., final)[ , -1]
 
@@ -678,7 +674,7 @@ pred2 <- predict(model_tuned, dtest)
 err2 <- mean(as.numeric(pred2 > 0.5) != test_labels)
 print(paste("test-error=", err2))
 
-### test-error= 0.0420289855072464
+### test-error = 0.0420289855072464
 
 # ROC
 roc_xgboost2 <- roc(test_labels, pred2) ## 0.6938
