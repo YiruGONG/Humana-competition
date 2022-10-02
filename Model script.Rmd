@@ -751,6 +751,85 @@ print(paste("test-error=", err3))
 roc_xgboost3 <- roc(test_labels, pred3) ## 0.7268
 ```
 
+
+```{r}
+
+final2 = final
+final2 = final2 %>% 
+  mutate_if(is.factor,as.numeric) %>% 
+  mutate(hi_flag = as.factor(hi_flag))
+
+
+trainTask <- makeClassifTask(data = final2[rowTrain,], target = "hi_flag", positive = 1)
+testTask <- makeClassifTask(data = final2[-rowTrain,], target = "hi_flag")
+
+
+set.seed(1)
+# Create an xgboost learner that is classification based and outputs
+# labels (as opposed to probabilities)
+xgb_learner <- makeLearner(
+  "classif.xgboost",
+  predict.type = "prob",
+  par.vals = list(
+    objective = "binary:logistic",
+    eval_metric = "error",
+    nrounds = 200
+  )
+)
+
+xgb_model <- train(xgb_learner, task = trainTask)
+```
+
+
+
+```{r}
+library(mlr)
+
+xgb_params <- makeParamSet(
+  # The number of trees in the model (each one built sequentially)
+  makeIntegerParam("nrounds", lower = 200, upper = 600),
+  # number of splits in each tree
+  makeIntegerParam("max_depth", lower = 1, upper = 10),
+  # "shrinkage" - prevents overfitting
+  makeNumericParam("eta", lower = .1, upper = .6),
+  # L2 regularization - prevents overfitting
+  makeNumericParam("lambda", lower = -1, upper = 0, trafo = function(x) 10^x)
+)
+getParamSet("classif.xgboost")
+control <- makeTuneControlRandom(maxit = 1)
+
+resample_desc <- makeResampleDesc("CV", iters = 4)
+
+tuned_params <- tuneParams(
+  learner = xgb_learner,
+  task = trainTask,
+  resampling = resample_desc,
+  par.set = xgb_params,
+  control = control
+)
+
+#Tune-x] 1: nrounds=462; max_depth=4; eta=0.312; lambda=0.144
+```
+
+```{r}
+# Create a new model using tuned hyperparameters
+xgb_tuned_learner <- setHyperPars(
+  learner = xgb_learner,
+  par.vals = tuned_params$x
+)
+
+# Re-train parameters using tuned hyperparameters (and full training set)
+xgb_model <- train(xgb_tuned_learner, trainTask)
+
+pred3 <- predict(xgb_model, testTask, type="prob")
+
+pred3$data$response
+
+roc_xgboost3 <- roc(pred3$data$truth, pred3$data$prob.0) ## 0.7268
+
+```
+
+
 ### Model Examining
 ```{r}
 library(base)
