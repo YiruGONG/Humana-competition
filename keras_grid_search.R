@@ -1,5 +1,5 @@
 load('split_data_matrix.Rdata')
-train_labels <- to_categorical(train_labels, 2)
+train_labels_cat <- to_categorical(train_labels, 2)
 
 FLAGS <- flags(flag_numeric("nodes_layer1", 256),
                flag_numeric("nodes_layer2", 128),
@@ -23,7 +23,7 @@ model <- keras_model_sequential() %>%
           optimizer = optimizer_rmsprop(), 
           metrics = "accuracy") %>% 
   fit(x = train_data, 
-      y = train_labels, 
+      y = train_labels_cat, 
       epochs = 50, 
       batch_size = 256,
       validation_split = 0.2,
