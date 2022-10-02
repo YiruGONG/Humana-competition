@@ -369,14 +369,11 @@ save(data_rose, file = "balanced_data.Rdata")
 
 # Final Balanced Data Set
 ```{r}
-final = data_rose
+train = data_rose
+test = cbind(x2,hi_flag=y2)
 
-set.seed(1)
-rowTrain <- createDataPartition(y = final$hi_flag,
-                                p = 0.7,
-                                list = FALSE)
-x = final[rowTrain,-1]  ## training data
-y = final$hi_flag[rowTrain]   
+x = train[,-1]  ## training data
+y = train$hi_flag   
 x2 = final[-rowTrain,-1]   ## testing data
 y2 = final$hi_flag[-rowTrain]
 
