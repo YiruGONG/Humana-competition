@@ -45,6 +45,7 @@ heading = heading %>% janitor::clean_names()
 
 ######### change categorical data type to factor
 ## idnex for categorical variable (string + some integer index)
+<<<<<<< HEAD
 
 col_cat = heading[which(heading$data_type=='string'),]$feature_name
 int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cons_hxmh", "cms_frailty_ind")
@@ -56,6 +57,10 @@ int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "
 col_cat = heading[which(heading$data_type == 'string'),]$feature_name
 int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_institutional_ind", "cms_hospice_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cms_ma_plan_ind", "cons_hxmh", "cms_frailty_ind")
 
+=======
+col_cat = heading[which(heading$data_type=='string'),]$feature_name
+int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cons_hxmh", "cms_frailty_ind")
+>>>>>>> c032b48032e572e46fdb94ade6eb1cb46c27935b
 cat_idx = c(col_cat, int_idx)
 
 new = new %>% 
@@ -259,9 +264,13 @@ y = final$hi_flag[rowTrain]
 x2 = final[-rowTrain,-1]   ## testing data
 y2 = final$hi_flag[-rowTrain]
 
+<<<<<<< HEAD
 save(x,y,x2,y2,rowTrain, final, file = "split_data.Rdata")
 
 save(x,y,x2,y2,file = "split_data.Rdata")
+=======
+save(x,y,x2,y2,rowTrain, final, cat_idx, file = "split_data.Rdata")
+>>>>>>> c032b48032e572e46fdb94ade6eb1cb46c27935b
 
 # load("split_data.Rdata")
 ```
@@ -614,16 +623,18 @@ balanced_final_matrix = model.matrix(hi_flag ~., data.rose)[ , -1]
 # Convert final data set to matrix
 final_matrix = model.matrix(hi_flag ~., final)[ , -1]
 
-# get the numb 70/30 training test split
-train_samples <- round(length(final$hi_flag) * .7)
+# # get the numb 70/30 training test split
+# train_samples <- round(length(final$hi_flag) * .7)
 
 # training data
-train_data <- final_matrix[1:train_samples,]
-train_labels <- final$hi_flag[1:train_samples]
+train_data <- final_matrix[rowTrain,]
+train_labels <- final$hi_flag[rowTrain]
 
 # testing data
-test_data <- final_matrix[-(1:train_samples),]
-test_labels <- final$hi_flag[-(1:train_samples)]
+test_data <- final_matrix[-rowTrain,]
+test_labels <- final$hi_flag[-rowTrain]
+
+save(final_matrix,train_data, train_labels, test_data, test_labels, rowTrain, file = "split_data_matrix.Rdata")
 
 # Load XGBoost package
 library(xgboost)
@@ -727,7 +738,7 @@ xgb.plot.importance(importance_matrix)
 ## Neural Networks
 
 ```{r}
-# load("split_data.Rdata")
+load("split_data_matrix.Rdata")
 ## tuning
 runs <- tuning_run("keras_grid_search.R", 
                    flags = list(
@@ -746,8 +757,11 @@ best
 ```
 
 ```{r}
+train_labels <- to_categorical(train_labels, 2)
+test_labels <- to_categorical(test_labels, 2)
+
 model.nn <- keras_model_sequential() %>%
-  layer_dense(units = best$flag_nodes_layer1, activation = "relu", input_shape = ncol(x)) %>%
+  layer_dense(units = best$flag_nodes_layer1, activation = "relu", input_shape = ncol(train_data)) %>%
   layer_batch_normalization() %>%
   layer_dropout(rate = best$flag_dropout_layer1) %>%
   layer_dense(units = best$flag_nodes_layer2, activation = "relu") %>%
@@ -759,20 +773,20 @@ model.nn <- keras_model_sequential() %>%
   layer_dense(units = 2, activation = "sigmoid") %>%
   compile(loss = "categorical_crossentropy",
           optimizer = optimizer_rmsprop(), 
-          metrics = "roc") 
+          metrics = "accuracy") 
 fit.nn = model.nn %>% 
-  fit(x = x, 
-      y = y, 
+  fit(x = train_data, 
+      y = train_labels, 
       epochs = 50, 
       batch_size = 256,
       validation_split = 0.2,
-      callbacks = list(callback_early_stopping(patience = 20),
+      callbacks = list(callback_early_stopping(patience = 10),
                        callback_reduce_lr_on_plateau()),
       verbose = 2)
 plot(fit.nn)
 
 ## testing and evaluation
-score <- model.nn %>% evaluate(x2, y2_c)
+score <- model.nn %>% evaluate(test_data, test_labels)
 score
 ```
 
