@@ -157,8 +157,6 @@ save(new_imp,file = "full_imputed.Rdata")
 ## Feature selection
 Jing's second part here
 
-<<<<<<< HEAD
-=======
 ```{r}
 new_imp$hi_flag = as.factor(new_imp$hi_flag)
 levels(new_imp$hi_flag) = c("no","yes")
@@ -232,7 +230,6 @@ plot(result_rfe1, type = c("g", "o"))
 # Print the results visually
 
 ```
->>>>>>> ebe2f41995200d909c5d7d9b2d36229f7b10e034
 
 ## Feature Engineering
 
@@ -383,13 +380,13 @@ y = final$hi_flag[rowTrain]
 x2 = final[-rowTrain,-1]   ## testing data
 y2 = final$hi_flag[-rowTrain]
 
-save(x,y,x2,y2,rowTrain, final, cat_idx, file = "split_data.Rdata")
+#save(x,y,x2,y2,rowTrain, final, cat_idx, file = "split_data.Rdata")
 
 # load("split_data.Rdata")
 ```
 
 
-## Logistic Regression (Baseline)
+## Linear Regression 
 
 ```{r}
 
@@ -415,7 +412,7 @@ confusionMatrix(data = factor(test.pred),
                 reference = as.factor(final$hi_flag)[-rowTrain],
                 positive = "1")
 
-roc_lm <- roc(y2, test.pred.prob) ## 0.7262
+roc_lm <- roc(y2, test.pred.prob) ## 0.7608
 ```
 
 
@@ -679,6 +676,7 @@ dtest <- xgb.DMatrix(data = test_data, label = test_labels)
 ### Model Training
 ```{r}
 # train a model using our training data
+set.seed(1)
 xgboost_model <- xgboost(data = dtrain,   
                  nround = 2, 
                  objective = "binary:logistic")  
@@ -696,12 +694,13 @@ print(paste("test-error=", err))
 ### test-error= 0.0420289855072464
 
 # ROC
-roc_xgboost <- roc(test_labels, pred) ## 0.7031
+roc_xgboost <- roc(test_labels, pred) ## 0.7862
 ```
 
 ### Model Turning 
 ```{r}
 # train an xgboost model
+set.seed(1)
 model_tuned <- xgboost(data = dtrain,       
                  max.depth = 3, 
                  nround = 2, 
@@ -720,7 +719,7 @@ print(paste("test-error=", err2))
 ### test-error = 0.0420289855072464
 
 # ROC
-roc_xgboost2 <- roc(test_labels, pred2) ## 0.6938
+roc_xgboost2 <- roc(test_labels, pred2) ## 0.7369
 ```
 
 ### Paramer Tuning
@@ -730,6 +729,7 @@ negative_cases <- sum(train_labels == 0) ## 0 = FALSE
 postive_cases <- sum(train_labels == 1) ##1 = TRUE
 
 # train a model using our training data
+set.seed(1)
 model_tuned2 <- xgboost(data = dtrain,           
                  max.depth = 3, 
                  nround = 10, 
@@ -745,10 +745,10 @@ pred3 <- predict(model_tuned2, dtest)
 err3 <- mean(as.numeric(pred3 > 0.5) != test_labels)
 print(paste("test-error=", err3))
 
-### test-error = 0.296618357487923
+### test-error = 0.237405106970324
 
 # ROC
-roc_xgboost3 <- roc(test_labels, pred3) ## 0.7268
+roc_xgboost3 <- roc(test_labels, pred3) ## 0.8448
 ```
 
 
@@ -908,7 +908,5 @@ score
 
 # Model Evaluation
 ddl: 10.1
-```{r}
 
-```
 
