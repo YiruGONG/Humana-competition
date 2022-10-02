@@ -524,6 +524,7 @@ roc = 0.7061
 library(lightgbm)
 library(MLmetrics)
 
+## data input
 train_lgb = train %>% 
   mutate(hi_flag = as.numeric(hi_flag)) %>% 
   mutate_if(is.factor, as.numeric) %>% 
@@ -533,12 +534,12 @@ test_lgb = test %>%
   mutate_if(is.factor, as.numeric) %>% 
   as.matrix()
   
-lgb_train = lgb.Dataset(data=train_lgb[,-1],
-                        label=train_lgb[,1],
+lgb_train = lgb.Dataset(data=train_lgb[,-235],
+                        label=train_lgb[,235],
                         categorical_feature = cat_idx)
 
-x2_lgb = test_lgb[,-1]
-y2_lgb = test_lgb[,1]
+x2_lgb = test_lgb[,-235]
+y2_lgb = test_lgb[,235]
 lgb_test = lgb.Dataset(data=x2_lgb,
                        label=y2_lgb,
                        categorical_feature = cat_idx)
@@ -562,7 +563,7 @@ lgb.grid = list(objective = "binary",
 
 # Evaluation: Gini for Lgb
 lgb.normalizedgini = function(preds, dtrain){
-  actual = getinfo(lgb_train, "label")
+  actual = lightgbm::getinfo(dtrain, "label")
   score  = NormalizedGini(preds,actual)
   return(list(name = "gini", value = score, higher_better = TRUE))
 }
@@ -582,6 +583,17 @@ lgb.model.cv$best_score
 
 Sys.time() - start
 ```
+
+```{r}
+lgb.model = lgb.train(params = lgb.grid, data = lgb_train, learning_rate = 0.01, 
+                      num_leaves = 25,num_threads = 2 , nrounds = 359,
+                      eval_freq = 20, eval = lgb.normalizedgini,
+                      categorical_feature = cat_idx)
+
+lgb_pred = predict(lgb.model,x2_lgb)
+roc(y2_lgb, lgb_pred)
+```
+
 
 ### Grid Tuning
 
