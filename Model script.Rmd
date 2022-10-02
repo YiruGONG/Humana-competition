@@ -396,8 +396,7 @@ ctrl <- trainControl(method = "cv",
 
 # Fit logistic regression model
 lm.fit <- lm(hi_flag ~ ., 
-         data = final,
-         subset = rowTrain,
+         data = train,
          metric = "ROC")
 
 # Evaluate lm performance on test data
