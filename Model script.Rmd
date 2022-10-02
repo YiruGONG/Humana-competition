@@ -265,6 +265,8 @@ x = final[rowTrain,-1]  ## training data
 y = final$hi_flag[rowTrain]   
 x2 = final[-rowTrain,-1]   ## testing data
 y2 = final$hi_flag[-rowTrain]
+
+save(final,rowTrain,cat_idx,file = "final.Rdata")
 ```
 
 # Imbalanced Data Processing
@@ -369,17 +371,19 @@ save(data_rose, file = "balanced_data.Rdata")
 
 # Final Balanced Data Set
 ```{r}
+load("balanced_data.Rdata") ## for balanced train data: data_rose
+load("final.Rdata") ## for original full dataset: final 
+
+## training data
 train = data_rose
+x = train[,-1]  
+y = train$hi_flag  
+
+## testing data
+x2 = final[-rowTrain,-1]   
+y2 = final$hi_flag[-rowTrain]
 test = cbind(x2,hi_flag=y2)
 
-x = train[,-1]  ## training data
-y = train$hi_flag   
-x2 = final[-rowTrain,-1]   ## testing data
-y2 = final$hi_flag[-rowTrain]
-
-#save(x,y,x2,y2,rowTrain, final, cat_idx, file = "split_data.Rdata")
-
-# load("split_data.Rdata")
 ```
 
 
@@ -415,23 +419,28 @@ roc_lm <- roc(y2, test.pred.prob) ## 0.7608
 ## Logistic regression (baseline)
 
 ```{r}
-final_rf = final %>% 
-mutate(hi_flag = as.factor(hi_flag) ) %>% 
+##data input
+train_rf = train %>% 
+  mutate(hi_flag = as.factor(hi_flag) ) %>% 
   mutate_if(is.factor,function(x) factor(x, labels = make.names(levels(x))))
+test_rf = test %>% 
+  mutate(hi_flag = as.factor(hi_flag) ) %>% 
+  mutate_if(is.factor,function(x) factor(x, labels = make.names(levels(x))))
+```
 
+```{r}
 ctrl <- trainControl(method = "cv",
                      summaryFunction = twoClassSummary,
                      classProbs = TRUE)
 
 model.glm <- train(hi_flag ~ .,
-                data = final_rf,
-                subset = rowTrain,
+                data = train_rf,
                 method = "glm",
                 family= "binomial",
                 metric = "ROC",
                 trControl = ctrl)
 
-glm.pred <- predict(model.glm, newdata = final_rf[-rowTrain,-1], type = "prob")[,2]
+glm.pred <- predict(model.glm, newdata = test_rf, type = "prob")[,2]
 roc(y2, glm.pred)
 
 ```
@@ -445,8 +454,7 @@ glmnGrid <- expand.grid(.alpha = seq(0, 1, length = 21),
                         .lambda = exp(seq(-8, -1, length = 50)))
 
 model.glmn <- train(hi_flag ~ .,
-                    data = final_rf,
-                    subset = rowTrain,
+                    data = train_rf,
                     method = "glmnet",
                     tuneGrid = glmnGrid,
                     metric = "ROC",
@@ -461,7 +469,7 @@ myPar <- list(superpose.symbol = list(col = myCol),
 plot(model.glmn, par.settings = myPar, xTrans = function(x) log(x))
 
 ## test data prediction
-glmn.pred <- predict(model.glmn, newdata = final_rf[-rowTrain,-1], type = "prob")[,2]
+glmn.pred <- predict(model.glmn, newdata = test_rf, type = "prob")[,2]
 roc(y2, glmn.pred)
 ```
 
@@ -476,8 +484,7 @@ rf.grid <- expand.grid(mtry = 1:8,
                                            by = 2))
 
 rf.fit <- train(hi_flag ~ .,
-                data = final_rf,
-                subset = rowTrain,
+                data = train_rf,
                 method = "ranger",
                 tuneGrid = rf.grid,
                 metric = "ROC",
@@ -489,7 +496,7 @@ ggplot(rf.fit, highlight = TRUE)
 ```{r}
 # variable importance
 rf2.final.per <- ranger(hi_flag ~ . ,
-                final_rf[rowTrain,],
+                train_rf,
                 mtry = rf.fit$bestTune[[1]],
                 min.node.size = rf.fit$bestTune[[3]],
                 splitrule = "gini",
@@ -505,7 +512,7 @@ barplot(sort(ranger::importance(rf2.final.per), decreasing = FALSE)[1:20],
 ```{r}
 ## test
 # rf.pred <- predict(rf.fit, newdata = data[-rowTrain,], type = "raw")
-rf.pred <- predict(rf.fit, newdata = final_rf[-rowTrain,], type = "prob")[,2]
+rf.pred <- predict(rf.fit, newdata = test_rf, type = "prob")[,2]
 roc.rf <- roc(y2, rf.pred)
 ```
 
@@ -517,17 +524,21 @@ roc = 0.7061
 library(lightgbm)
 library(MLmetrics)
 
-final_lgb = final %>% 
+train_lgb = train %>% 
+  mutate(hi_flag = as.numeric(hi_flag)) %>% 
+  mutate_if(is.factor, as.numeric) %>% 
+  as.matrix()
+test_lgb = test %>% 
   mutate(hi_flag = as.numeric(hi_flag)) %>% 
   mutate_if(is.factor, as.numeric) %>% 
   as.matrix()
   
-lgb_train = lgb.Dataset(data=final_lgb[rowTrain,-1],
-                        label=final_lgb[rowTrain,1],
+lgb_train = lgb.Dataset(data=train_lgb[,-1],
+                        label=train_lgb[,1],
                         categorical_feature = cat_idx)
 
-x2_lgb = final_lgb[-rowTrain,-1]
-y2_lgb = final_lgb[-rowTrain,1]
+x2_lgb = test_lgb[,-1]
+y2_lgb = test_lgb[,1]
 lgb_test = lgb.Dataset(data=x2_lgb,
                        label=y2_lgb,
                        categorical_feature = cat_idx)
