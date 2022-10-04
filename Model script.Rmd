@@ -386,7 +386,6 @@ y2 = final$hi_flag[-rowTrain]
 ## Linear Regression 
 
 ```{r}
-
 ctrl <- trainControl(method = "cv",
                      summaryFunction = twoClassSummary,
                      classProbs = TRUE)
@@ -398,7 +397,7 @@ lm.fit <- lm(hi_flag ~ .,
 
 # Evaluate lm performance on test data
 test.pred.prob <- predict(lm.fit, 
-                         newdata = final[-rowTrain,],
+                         newdata = test,
                          type = "response")
 
 test.pred <- rep("0", length(test.pred.prob))
@@ -695,9 +694,6 @@ ROC = 0.7296
 # Convert final data set to matrix
 final_matrix = model.matrix(hi_flag ~., final)[ , -1]
 
-# # get the numb 70/30 training test split
-# train_samples <- round(length(final$hi_flag) * .7)
-
 # training data
 train_data <- final_matrix[rowTrain,]
 train_labels <- final$hi_flag[rowTrain]
@@ -796,7 +792,6 @@ roc_xgboost3 <- roc(test_labels, pred3) ## 0.8448
 
 
 ```{r}
-
 final2 = final
 final2 = final2 %>% 
   mutate_if(is.factor,as.numeric) %>% 
