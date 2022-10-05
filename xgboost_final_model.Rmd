@@ -1,0 +1,205 @@
+---
+title: "xgboost final model"
+author: "Jiaqi Chen"
+date: "2022-10-05"
+output: pdf_document
+---
+
+```{r, warning=FALSE}
+library(data.table)
+library(readxl)
+library(tidyverse)
+library(VIM)
+library(dplyr)
+library(recipes)
+library(caret)
+library(ranger)
+library(pROC)
+library(xgboost)
+library(keras)
+library(tfruns)
+library(mice)
+```
+
+# Final Balanced Data Set
+```{r}
+load("balanced_data.Rdata") ## for balanced train data: data_rose
+load("final.Rdata") ## for original full dataset: final 
+## training data
+train = data_rose
+x = train[,-1]  
+y = train$hi_flag  
+
+## testing data
+x2 = final[-rowTrain,-1]   
+y2 = final$hi_flag[-rowTrain]
+test = cbind(x2,hi_flag=y2)
+
+```
+
+# XGBoost
+```{r}
+train2 = train %>% 
+  mutate_if(is.factor,as.numeric) %>% 
+  mutate(hi_flag = as.factor(hi_flag))
+  
+
+final2 = final
+final2 = final2 %>% 
+  mutate_if(is.factor,as.numeric) 
+
+library(mlr)
+
+trainTask <- makeClassifTask(data = train2, target = "hi_flag", positive = 1)
+testTask <- makeClassifTask(data = final2[-rowTrain,], target = "hi_flag")
+
+set.seed(1)
+# Create an xgboost learner that is classification based and outputs
+# labels (as opposed to probabilities)
+xgb_learner <- makeLearner(
+  "classif.xgboost",
+  predict.type = "prob",
+  par.vals = list(
+    objective = "binary:logistic",
+    eval_metric = "auc",
+    nrounds = 200
+  )
+)
+
+xgb_model <- train(xgb_learner, task = trainTask)
+```
+
+
+```{r}
+xgb_params <- makeParamSet(
+  # The number of trees in the model (each one built sequentially)
+  makeIntegerParam("nrounds", lower = 50, upper = 300),
+  # number of splits in each tree
+  makeIntegerParam("max_depth", lower = 1, upper = 10),
+  # "shrinkage" - prevents overfitting
+  makeNumericParam("eta", lower = .01, upper = .4),
+  # L2 regularization - prevents overfitting
+  makeNumericParam("lambda", lower = -1, upper = 0, trafo = function(x) 10^x)
+)
+getParamSet("classif.xgboost")
+
+control <- makeTuneControlRandom(maxit = 1)
+
+set.seed(1)
+resample_desc <- makeResampleDesc("CV", iters = 4)
+tuned_params <- tuneParams(
+  learner = xgb_learner,
+  task = trainTask,
+  resampling = resample_desc,
+  par.set = xgb_params,
+  control = control
+)
+
+# Result: nrounds=240; max_depth=3; eta=0.287; lambda=0.586 : mmce.test.mean=0.0452811
+# 0.7025
+
+# Result: nrounds=272; max_depth=1; eta=0.337; lambda=0.214 : mmce.test.mean=0.0438911
+# 0.737
+
+#balanced
+#[Tune] Result: nrounds=268; max_depth=4; eta=0.125; lambda=0.105 : mmce.test.mean=0.1142048
+# 0.9577
+
+# Result: nrounds=177; max_depth=10; eta=0.308; lambda=0.436 : mmce.test.mean=0.1156836
+
+#seed.1 [Tune] Result: nrounds=244; max_depth=3; eta=0.0639; lambda=0.206 : mmce.test.mean=0.1446276
+# 0.9537
+```
+
+
+```{r}
+# Create a new model using tuned hyperparameters
+xgb_tuned_learner <- setHyperPars(
+  learner = xgb_learner,
+  par.vals = tuned_params$x
+)
+
+# Re-train parameters using tuned hyperparameters (and full training set)
+xgb_model <- train(xgb_tuned_learner, trainTask)
+
+pred3 <- predict(xgb_model, testTask, type = "prob")
+
+pred3$data$response
+
+roc_xgboost3 <- roc(pred3$data$truth, pred3$data$prob.0) ## 0.7041
+roc_xgboost3
+```
+
+# Result submission
+
+```{r}
+# holdout data manipulation
+all_feature = colnames(select(final,-hi_flag,-metro))
+cat_idx2 = c(cat_idx,"metro")
+num_idx = setdiff(all_feature,cat_idx2)
+
+## feature selection
+holdout = read.csv("../2022_Competition_Holdout.csv") %>% 
+  janitor::clean_names()
+holdout[holdout=='null'] = NA
+holdout_id = holdout$id
+
+holdout = holdout %>% 
+  select_at(all_feature) %>%
+  mutate(metro = ifelse(grepl("Metro", rucc_category) , 1, 0),
+         metro = as.factor(metro) ) %>% 
+  mutate_at(cat_idx2, as.factor) %>% 
+  mutate_at(num_idx,as.numeric)
+### view the NA condition
+h.na = sapply(holdout,function(x) sum(is.na(x)))
+h.na[which(h.na>0)]
+```
+
+## Ver2: XGBoost
+```{r}
+train3 = final %>% 
+  mutate_if(is.factor,as.numeric) %>% 
+  mutate(hi_flag = as.factor(hi_flag))
+  
+
+final3 = holdout %>% 
+  mutate_if(is.factor,as.numeric) 
+
+library(mlr)
+
+trainTask2 <- makeClassifTask(data = train3, target = "hi_flag", positive = 1)
+# testTask2 <- makeClassifTask(data = final3, target = "label")
+
+label = sample(0:1, size = 12220, replace = T)
+final3$hi_flag = label
+testTask2 <- makeClassifTask(data = final3, target = "hi_flag", positive = 1)
+```
+
+# New Model for Train.csv
+
+```{r}
+# Create a new model using tuned hyperparameters
+xgb_tuned_learner <- setHyperPars(
+  learner = xgb_learner,
+  par.vals = tuned_params$x
+)
+
+# Re-train parameters using tuned hyperparameters (and full training set)
+xgb_model2 <- train(xgb_tuned_learner, trainTask2)
+
+pred4 <- predict(xgb_model2, testTask2, type = "prob")
+
+prob = pred4$data$prob.1
+
+```
+
+```{r}
+output = cbind(ID = holdout_id, 
+               SCORE = prob,  #or pred4$data$response (a column of probability)
+               RANK = rank(-prob,ties.method = "last"))
+write.csv(output,"2022CaseCompetition_Yiru_Gong_20221004.csv",row.names = F)
+```
+
+
+
+
