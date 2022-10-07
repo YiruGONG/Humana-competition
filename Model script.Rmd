@@ -388,20 +388,18 @@ y2 = final$hi_flag[-rowTrain]
 ## Linear Regression 
 
 ```{r}
-
 ctrl <- trainControl(method = "cv",
                      summaryFunction = twoClassSummary,
                      classProbs = TRUE)
 
 # Fit logistic regression model
 lm.fit <- lm(hi_flag ~ ., 
-         data = final,
-         subset = rowTrain,
+         data = train,
          metric = "ROC")
 
 # Evaluate lm performance on test data
 test.pred.prob <- predict(lm.fit, 
-                         newdata = final[-rowTrain,],
+                         newdata = test,
                          type = "response")
 
 test.pred <- rep("0", length(test.pred.prob))
@@ -743,9 +741,6 @@ ROC = 0.7341
 # Convert final data set to matrix
 final_matrix = model.matrix(hi_flag ~., final)[ , -1]
 
-# # get the numb 70/30 training test split
-# train_samples <- round(length(final$hi_flag) * .7)
-
 # training data
 train_data <- final_matrix[rowTrain,]
 train_labels <- final$hi_flag[rowTrain]
@@ -844,15 +839,16 @@ roc_xgboost3 <- roc(test_labels, pred3) ## 0.8448
 
 
 ```{r}
+final2 = final
 library(mlr)
 ```
 
 
 ```{r}
-x = train[,-1]  ## training data
-y = train$hi_flag   
-x2 = final[-rowTrain,-1]   ## testing data
-y2 = final$hi_flag[-rowTrain]
+#x = train[,-1]  ## training data
+#y = train$hi_flag   
+#x2 = final[-rowTrain,-1]   ## testing data
+#y2 = final$hi_flag[-rowTrain]
 
 
 train2 = train %>% 
@@ -864,6 +860,7 @@ final2 = final
 final2 = final2 %>% 
   mutate_if(is.factor,as.numeric) 
 
+library(mlr)
 
 trainTask <- makeClassifTask(data = train2, target = "hi_flag", positive = 1)
 testTask <- makeClassifTask(data = final2[-rowTrain,], target = "hi_flag")
@@ -1050,13 +1047,57 @@ holdout = holdout %>%
 h.na = sapply(holdout,function(x) sum(is.na(x)))
 h.na[which(h.na>0)]
 
+<<<<<<< HEAD
 # ## imputation
+=======
+## imputation
+>>>>>>> 380d17e1b47fb32e7a35a858b27c40b58bafab6b
 # train_holdout = rbind(cbind(select(final,-hi_flag,-metro),dataset = "train"),
 #                       cbind(holdout,dataset = "test"))
 # holdout_imp = impute(train_holdout,cat_idx)
 
 ```
 
+<<<<<<< HEAD
+=======
+```{r}
+# all_selected = train_holdout
+# impute = function(all_selected, cat_idx){
+#   start = Sys.time()
+#   print(start)
+#   pmm = mice(all_selected, m = 5, method = "pmm")
+#   new_all = complete(pmm,"repeated",include = TRUE)
+#   ### get the mode of repeated imputations
+#   
+#   new_imp = data.frame(matrix(ncol = 0, nrow = nrow(new_all)))
+#   for ( col in colnames(all_selected) ){
+#     subset = new_all %>% select(starts_with(paste0(col,'.')))
+#     new_imp[,col] = apply(subset, 1, function(x){
+#       if ( is.na(x[1]) ){
+#         if ( is.character(x[2]) | is.logical(x[2]))
+#           return( names(which.max(table(x[-1]))) ) ## the mode result in repeated pmm
+#         else if (is.integer(x[2]))
+#           return( median(x[-1]))
+#         else if (is.numeric(x[2]))
+#           return(mean(x[-1]))
+#         else {
+#           print(paste0('check the column ',col, ' datatype: ', typeof(x[2])) )
+#           return(x[1])
+#         }
+#       } else return(x[1])
+#     })
+#   }
+#   new_imp = new_imp %>%
+#     mutate_at(cat_idx,as.factor)
+# 
+#   print(Sys.time() - start)
+#   return(new_imp)
+# }
+
+```
+
+
+>>>>>>> 380d17e1b47fb32e7a35a858b27c40b58bafab6b
 
 ## Ver1: untunned lightGBM
 updated: to tunned lightGBM
