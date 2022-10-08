@@ -61,7 +61,7 @@ new = new %>%
 ## summary
 # summary(new,maxsum = 15)
 
-final$cat_idx = cat_idx
+#final$cat_idx = cat_idx
 
 ```
 
@@ -712,7 +712,7 @@ lgb.grid = list(objective = "binary",
                 bagging_freq = 5, # p2$bagging_freq[1],
                 min_data = 100,
                 max_bin = 50,
-                lambda_l1 = 4 #p2$lambda_l1[1],
+                lambda_l1 = 4, #p2$lambda_l1[1],
                 lambda_l2 = p2$lambda_l2[1],
                 min_data_in_bin=100,
                 min_gain_to_split = 10, #grids$min_gain_to_split[i],
@@ -886,7 +886,6 @@ xgb_model <- train(xgb_learner, task = trainTask)
 
 ```{r}
 
-
 xgb_params <- makeParamSet(
   # The number of trees in the model (each one built sequentially)
   makeIntegerParam("nrounds", lower = 50, upper = 300),
@@ -897,6 +896,8 @@ xgb_params <- makeParamSet(
   # L2 regularization - prevents overfitting
   makeNumericParam("lambda", lower = -1, upper = 0, trafo = function(x) 10^x)
 )
+
+
 getParamSet("classif.xgboost")
 
 control <- makeTuneControlRandom(maxit = 1)
@@ -927,6 +928,7 @@ tuned_params <- tuneParams(
 # 0.9537
 ```
 
+
 ```{r}
 # Create a new model using tuned hyperparameters
 xgb_tuned_learner <- setHyperPars(
@@ -943,6 +945,36 @@ pred3$data$response
 
 roc_xgboost3 <- roc(pred3$data$truth, pred3$data$prob.1) ## 0.7268
 roc_xgboost3
+
+```
+```{r}
+
+#getFeatureImportance(xgb_model)
+
+vm = generateFeatureImportanceData(
+  trainTask,
+  method = "permutation.importance",
+  xgb_tuned_learner,
+  features = getTaskFeatureNames(trainTask)
+)
+
+
+k = vm$res 
+
+imp =  k%>%
+  pivot_longer(cols = everything(),names_to ="var") %>% 
+  arrange(desc(value)) %>% 
+  pull(value)
+
+names(imp) = k%>%
+  pivot_longer(cols = everything(),names_to ="var") %>% 
+  arrange(desc(value)) %>% 
+  pull(var)
+
+par(mar = c(3,12,3,3))
+barplot(imp[1:20],
+        las = 2, horiz = TRUE, cex.names = 0.7, 
+        col = colorRampPalette(colors = c("cyan","blue"))(10))
 
 ```
 
