@@ -262,6 +262,7 @@ x2 = final[-rowTrain,-1]   ## testing data
 y2 = final$hi_flag[-rowTrain]
 
 save(final,rowTrain,cat_idx,file = "final.Rdata")
+load("final.Rdata")
 ```
 
 # Imbalanced Data Processing

@@ -1,0 +1,69 @@
+---
+title: "balancing_visualization"
+author: "Jiaqi Chen"
+date: "2022-10-08"
+output: pdf_document
+---
+
+```{r}
+library(ggplot2)
+```
+
+# Unbalanced Dataset
+```{r}
+unbalanced <- data.frame(housing = c("no housing insecure", "housing insecure"),
+                sample = c(46182, 2118))
+
+p1 <- ggplot(data = unbalanced, aes(x = housing, y = sample)) + geom_bar(stat = "identity", width = 0.4, fill = "steelblue") +
+  geom_text(aes(label = sample), vjust = 1.2, color = "white", size = 3.5) + theme_minimal()
+p1
+
+text <- element_text(face = "bold", color = "steelblue")
+
+p1 <- p1 + labs(title = "Unbalanced Data Sample", x = "Housing Insecurity Type", y = "Sample") +
+  theme(title = element_text(hjust = 0.5), plot.title = text, axis.title = text)
+p1
+```
+
+# Over Sampling Dataset
+```{r}
+unbalanced <- data.frame(housing = c("no housing insecure", "housing insecure"),
+                sample = c(32328, 32248))
+
+p2 <- ggplot(data = unbalanced, aes(x = housing, y = sample)) + geom_bar(stat = "identity", width = 0.4, fill = "steelblue") + geom_text(aes(label = sample), vjust = 1.6, color = "white", size = 3.5) + theme_minimal()
+
+text <- element_text(face = "bold", color = "steelblue")
+
+p2 <- p2 + labs(title = "Over Sampling Data Sample", x = "Housing Insecurity Type", y = "Sample") + theme(plot.title = element_text(hjust = 0.5)) + theme(plot.title = text, axis.title = text)
+p2
+```
+
+# Under Sampling Dataset
+```{r}
+unbalanced <- data.frame(housing = c("no housing insecure", "housing insecure"),
+                sample = c(1536, 1483))
+
+p3 <- ggplot(data = unbalanced, aes(x = housing, y = sample)) + geom_bar(stat = "identity", width = 0.4, fill = "steelblue") + geom_text(aes(label = sample), vjust = 1.6, color = "white", size = 3.5) + theme_minimal()
+
+text <- element_text(face = "bold", color = "steelblue")
+
+p3 <- p3 + labs(title = "Under Sampling Data Sample", x = "Housing Insecurity Type", y = "Sample") + theme(plot.title = element_text(hjust = 0.5)) + theme(plot.title = text, axis.title = text)
+p3
+```
+
+# ROSE Dataset
+```{r}
+unbalanced <- data.frame(housing = c("no housing insecure", "housing insecure"), sample = c(17000, 16811))
+
+p4 <- ggplot(data = unbalanced, aes(x = housing, y = sample)) + geom_bar(stat = "identity", width = 0.4, fill = "steelblue") + geom_text(aes(label = sample), vjust = 1.6, color = "white", size = 3.5) + theme_minimal()
+
+text <- element_text(face = "bold", color = "steelblue")
+
+p4 <- p4 + labs(title = "ROSE Data Sample", x = "Housing Insecurity Type", y = "Sample") + theme(plot.title = element_text(hjust = 0.5)) + theme(plot.title = text, axis.title = text)
+p4
+```
+
+
+
+
+
