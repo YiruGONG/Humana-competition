@@ -96,22 +96,19 @@ tuned_params <- tuneParams(
 )
 
 tuned_params$x
-# Result: nrounds=240; max_depth=3; eta=0.287; lambda=0.586 : mmce.test.mean=0.0452811
-# 0.7025
-
-# Result: nrounds=272; max_depth=1; eta=0.337; lambda=0.214 : mmce.test.mean=0.0438911
-# 0.737
-
-#balanced
-#[Tune] Result: nrounds=268; max_depth=4; eta=0.125; lambda=0.105 : mmce.test.mean=0.1142048
-# 0.9577
-
-# Result: nrounds=177; max_depth=10; eta=0.308; lambda=0.436 : mmce.test.mean=0.1156836
-
-#seed.1 [Tune] Result: nrounds=244; max_depth=3; eta=0.0639; lambda=0.206 : mmce.test.mean=0.1446276
-# 0.9537
 ```
 
+$nrounds
+[1] 168
+
+$max_depth
+[1] 1
+
+$eta
+[1] 0.3986912
+
+$lambda
+[1] 0.2052652
 
 ```{r}
 # Create a new model using tuned hyperparameters
@@ -123,12 +120,15 @@ xgb_tuned_learner <- setHyperPars(
 # Re-train parameters using tuned hyperparameters (and full training set)
 xgb_model <- mlr::train(xgb_tuned_learner, trainTask)
 
+max(xgb_model[["learner.model"]][["evaluation_log"]][["train_auc"]])
+#0.8002
+
 pred3 <- predict(xgb_model, testTask, type = "prob")
 
 # pred3$data$response
 
 roc_xgboost3 <- roc(pred3$data$truth, pred3$data$prob.1) ## 0.7341
-roc_xgboost3
+roc_xgboost3 #0.7341
 ```
 
 # Result submission
