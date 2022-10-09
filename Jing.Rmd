@@ -60,7 +60,7 @@ data_num2 = data_have_limit_na %>%
 ```{r}
 
 rec1 = recipe(hi_flag ~ ., data = data_num2) %>%
-  step_impute_knn(all_predictors()) %>% 
+  step_impute_bag(all_predictors()) %>% 
   step_center(all_predictors()) %>%
   step_scale(all_predictors()) %>% 
   step_nzv(all_predictors()) 
@@ -111,7 +111,7 @@ sex_cd"
 )
 
 meaningful_select_vec = unlist(names_select)
-
+new_imp
 ```
 
 
@@ -149,7 +149,7 @@ library(doMC)
 registerDoMC(cores = 2)
 
 set.seed(10)
-result_rfe1 <- rfe(x=select_features[,3:199],y = select_features$id, sizes = seq(100,150,50), rfeControl = ctrl)
+result_rfe1 <- rfe(x=new_imp[,3:199],y = new_imp$id, sizes = seq(100,150,50), rfeControl = ctrl)
 
 
 # Print the results
