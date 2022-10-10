@@ -24,9 +24,10 @@ library(mice)
 ## data input
 
 ```{r}
-load("balanced_data.Rdata") ## for balanced train data: data_rose
-load("final.Rdata") ## for original full dataset: final 
-cat_idx2 = c(cat_idx, 'metro')
+# load("final_unimputed.Rdata")
+# load("balanced_data.Rdata") ## for balanced train data: data_rose
+load("final.Rdata") ## for original full dataset: final
+# cat_idx2 = c(cat_idx, 'metro')
 
 ## training data
 # train = data_rose ##for balanced data
@@ -55,12 +56,12 @@ test_lgb = test %>%
   mutate_if(is.factor, as.numeric) %>%
   as.matrix()
 
-colnames(train_lgb)
+head(colnames(train_lgb))
 lgb_train = lgb.Dataset(data=train_lgb[,-1],
                         label=train_lgb[,1],
                         categorical_feature = cat_idx2)
 
-colnames(test_lgb)
+head(colnames(test_lgb))
 x2_lgb = test_lgb[,-1]
 y2_lgb = test_lgb[,1]
 lgb_test = lgb.Dataset(data=x2_lgb,
@@ -127,21 +128,22 @@ roc(y2_lgb, lgb_pred)
 ## Grid Tuning
 
 ```{r}
-grids_full = expand.grid(max_depth = c(1,3,5,7,9),
+grids_full = expand.grid(max_depth = c(1,2,3),
                 # learning_rate = c(0.01,0.005),
                 # min_sum_hessian_in_leaf = seq(0,1,0.1),  #seq(0.0005,0.01,0.002),
-                feature_fraction = c(0.1,0.3,0.5,0.7,0.9),
-                lambda_l1 = c(1.5,3,4.5,6),
-                lambda_l2 = c(0.3,0.5),
+                feature_fraction = round(runif(10,min = 0, max = 1), 2),   #c(0.1,0.3,0.5,0.7,0.9),
+                lambda_l1 = runif(10,min = 1.5, max = 6),
+                lambda_l2 = runif(10,min = 0, max = 1),
                 # min_gain_to_split = 10,  #seq(1,15,4),
                 # min_data_in_leaf = c(30,100,500,1000,2000)
-                bagging_fraction = c(0.1,0.3,0.5,0.7,0.9)
-                # bagging_freq = c(5,10)
-                # min_data = 100,
+                # bagging_fraction = c(0.1,0.3,0.5,0.7,0.9)
+                bagging_freq = c(5,10,15,20),
+                min_data = c(3,50,100, 500),
                 # max_bin = 50,
-                # min_data_in_bin=100
+                min_data_in_bin=c(10, 50,100)
                 )
-grids = grids_full[sample(1:nrow(grids_full), 0.3*nrow(grids_full)),]
+grids_full = grids_full %>% filter(min_data >= min_data_in_bin)
+grids = grids_full[sample(1:nrow(grids_full), 0.005*nrow(grids_full)),]
 
 start = Sys.time()
 start
@@ -149,29 +151,33 @@ start
 performance = data.frame(matrix(ncol = 3, nrow = 0))
 colnames(performance) = c('comb','best_iter', "best_score")
 for (i in c(1:nrow(grids))){
+  lgb_train = lgb.Dataset(data=train_lgb[,-1],
+                        label=train_lgb[,1],
+                        categorical_feature = cat_idx2,
+                        min_data_in_bin=grids$min_data_in_bin[i])
+  
   lgb.grid = list(objective = "binary",
                 metric = "auc",
                 max_depth = grids$max_depth[i],
                 learning_rate = 0.01, #grids$learning_rate[i],
                 min_sum_hessian_in_leaf = 1,
                 feature_fraction = grids$feature_fraction[i],
-                bagging_fraction =  grids$bagging_fraction[i],
-                bagging_freq =  5, #grids$bagging_freq[i],
-                min_data = 100,
+                bagging_fraction =  0.9, #grids$bagging_fraction[i],
+                bagging_freq = grids$bagging_freq[i],
+                min_data = grids$min_data[i],
                 max_bin = 50,
                 lambda_l1 = grids$lambda_l1[i],
                 lambda_l2 = grids$lambda_l2[i],
-                min_data_in_bin=100,
+                min_data_in_bin=grids$min_data_in_bin[i],
                 min_gain_to_split = 10, #grids$min_gain_to_split[i],
-                min_data_in_leaf = 30,
+                # min_data_in_leaf = 30,
                 is_unbalance = TRUE)
                 # scale_pos_weight = 24)
   
-  set.seed(256)
   lgb.model.cv = lgb.cv(params = lgb.grid, data = lgb_train, num_leaves = 25,
                   num_threads = 4 , nrounds = 3000, early_stopping_rounds = 50,
                   eval_freq = 20, eval = lgb.normalizedgini,
-                  categorical_feature = cat_idx2, nfold = 5, stratified = TRUE)
+                  categorical_feature = cat_idx2, nfold = 5, stratified = TRUE, data_seed = 1)
   record = data.frame(comb=i, 
                       best_iter=lgb.model.cv$best_iter, 
                       best_score=lgb.model.cv$best_score)
@@ -189,6 +195,9 @@ print(p2[1,])
 
 Sys.time() - start
 
+par(mfrow=c(3,3))
+plot(best_score~., p2[,-c(1:2)],alpha=0.5)
+
 ## round 1 best
 # comb best_iter best_score max_depth feature_fraction lambda_l1 lambda_l2
 # 1   83      1199  0.7584805         2              0.2         4       0.5
@@ -200,19 +209,23 @@ Sys.time() - start
 ```{r}
 # Train final model
 # i = best$comb
+lgb_train = lgb.Dataset(data=train_lgb[,-1],
+                        label=train_lgb[,1],
+                        categorical_feature = cat_idx2,
+                        min_data_in_bin=p2$min_data_in_bin[1])
 lgb.grid = list(objective = "binary",
                 metric = "auc",
                 max_depth = p2$max_depth[1],
                 learning_rate = 0.01, #p2$learning_rate[1],
                 min_sum_hessian_in_leaf = 1,
                 feature_fraction = p2$feature_fraction[1],
-                bagging_fraction = p2$bagging_fraction[1],
-                bagging_freq = 5, # p2$bagging_freq[1],
-                min_data = 100,
+                bagging_fraction = 0.9, # p2$bagging_fraction[1],
+                bagging_freq = p2$bagging_freq[1],
+                min_data = p2$min_data[1],
                 max_bin = 50,
                 lambda_l1 = p2$lambda_l1[1],
                 lambda_l2 = p2$lambda_l2[1],
-                min_data_in_bin=100,
+                min_data_in_bin= p2$min_data_in_bin[1],
                 min_gain_to_split = 10, #grids$min_gain_to_split[i],
                 min_data_in_leaf = 30,
                 is_unbalance = TRUE)

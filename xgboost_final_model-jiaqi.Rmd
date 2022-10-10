@@ -39,6 +39,10 @@ int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "
 
 cat_idx = c(col_cat, int_idx)
 
+## cat to factor
+new = new %>% 
+  mutate_at(cat_idx, as.factor)
+
 # numeric data selection
 data_num <- new[ ,unlist(lapply(new, is.numeric))]
 
@@ -73,9 +77,15 @@ save(all_selected,file = "not_imputed.Rdata")
 # load("not_imputed.Rdata")
 #final = all_selected
 
+<<<<<<< HEAD:xgboost_final_model-jiaqi.Rmd
 # remove duplicated column names
 #duplicate = duplicated(colnames(final))
 #final = final[, !duplicate]
+=======
+# # remove duplicated column names
+# duplicate = duplicated(colnames(final))
+# final = final[, !duplicate]
+>>>>>>> 10da7943e4bbeaea86665377e54e9eb6dd181df7:xgboost_final_model.Rmd
 ```
 
 

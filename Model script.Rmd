@@ -103,7 +103,7 @@ process_select_vec = sort(colnames(select_features))
 ## data imputation
 
 ```{r}
-cat = new[,cat_idx]
+cat = new[ ,unlist(lapply(new, is.factor))]
 all_selected = cbind(select_features,cat) %>% 
   mutate(hi_flag = as.factor(hi_flag))
 
