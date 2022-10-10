@@ -86,14 +86,23 @@ final = final[, !duplicate]
 # train = data_rose
 ```
 
-# train vs test dataset
+# Final Dataset without imputation
 ```{r}
+# dataset without imputation
 ## training data
 # load("balanced_data.Rdata")
-train = data_rose %>% 
-  select(colnames(final))
+#train = data_rose %>% select(colnames(final))
+```
 
-x = train[,-1]  
+# train vs test dataset
+```{r}
+train = final #train with unbalanced imputated dataset
+rowTrain <- createDataPartition(y = final$hi_flag,
+                                p = 0.7,
+                                list = FALSE)
+x = train[rowTrain,-1]  
+
+# x = train[-1]  #train with balanced data
 y = train$hi_flag  
 
 ## testing data
