@@ -24,9 +24,10 @@ library(mice)
 ## data input
 
 ```{r}
-load("balanced_data.Rdata") ## for balanced train data: data_rose
-load("final.Rdata") ## for original full dataset: final 
-cat_idx2 = c(cat_idx, 'metro')
+# load("final_unimputed.Rdata")
+# load("balanced_data.Rdata") ## for balanced train data: data_rose
+load("final.Rdata") ## for original full dataset: final
+# cat_idx2 = c(cat_idx, 'metro')
 
 ## training data
 # train = data_rose ##for balanced data
@@ -55,12 +56,12 @@ test_lgb = test %>%
   mutate_if(is.factor, as.numeric) %>%
   as.matrix()
 
-colnames(train_lgb)
+head(colnames(train_lgb))
 lgb_train = lgb.Dataset(data=train_lgb[,-1],
                         label=train_lgb[,1],
                         categorical_feature = cat_idx2)
 
-colnames(test_lgb)
+head(colnames(test_lgb))
 x2_lgb = test_lgb[,-1]
 y2_lgb = test_lgb[,1]
 lgb_test = lgb.Dataset(data=x2_lgb,
