@@ -21,20 +21,85 @@ library(tfruns)
 library(mice)
 ```
 
-# Final Balanced Data Set
+# Data without Imputation
 ```{r}
-load("balanced_data.Rdata") ## for balanced train data: data_rose
-load("final.Rdata") ## for original full dataset: final 
+new = fread('../training_new.csv') %>% 
+  janitor::clean_names() %>% 
+  as.data.frame()
+# new_cat = new[,..col_cat]
+new = new[,-c(1,2)]
+
+heading = read_excel('../Humana_Mays_2022_DataDictionary.xlsx', sheet = 'Data Dictionary')
+heading = heading %>% janitor::clean_names()
+
+######### change categorical data type to factor
+col_cat = heading[which(heading$data_type == 'string'),]$feature_name
+
+int_idx = c("cms_disabled_ind", "cons_hxmioc", "cons_hxmboh", "cons_stlnindx", "cmsd2_men_mad_ind", "cms_dual_eligible_ind", "cons_stlindex", "cms_low_income_ind", "cons_hxmh", "cms_frailty_ind")
+
+cat_idx = c(col_cat, int_idx)
+
+# numeric data selection
+data_num <- new[ ,unlist(lapply(new, is.numeric))]
+
+column_limit_na = names(which(colSums(is.na(data_num)) < 10000))
+
+data_have_limit_na = data_num[,column_limit_na]
+
+data_num2 = data_have_limit_na %>% 
+  select(hi_flag,everything())
+
+rec1 = recipe(hi_flag ~ ., data = data_num2) %>%
+  step_center(all_predictors()) %>%
+  step_scale(all_predictors()) %>% 
+  step_nzv(all_predictors()) 
+
+prep(rec1, training = data_num2, retain = TRUE) %>% 
+  juice(all_predictors()) %>% 
+  ncol()
+
+select_features = prep(rec1, training = data_num2, retain = TRUE) %>% 
+  juice(all_outcomes(),all_predictors())
+
+process_select_vec = sort(colnames(select_features))
+
+cat = new[,cat_idx]
+
+all_selected = cbind(select_features,cat) %>% 
+  mutate(hi_flag = as.factor(hi_flag))
+
+save(all_selected,file = "not_imputed.Rdata")
+
+# load("not_imputed.Rdata")
+#final = all_selected
+
+# remove duplicated column names
+duplicate = duplicated(colnames(final))
+final = final[, !duplicate]
+```
+
+
+# Final Dataset with imputation
+```{r}
+# load("final.Rdata") ## for original full dataset: final
+# load("balanced_data.Rdata")
+# train = data_rose
+```
+
+# train vs test dataset
+```{r}
 ## training data
-train = data_rose
+# load("balanced_data.Rdata")
+train = data_rose %>% 
+  select(colnames(final))
+
 x = train[,-1]  
 y = train$hi_flag  
 
 ## testing data
 x2 = final[-rowTrain,-1]   
 y2 = final$hi_flag[-rowTrain]
-test = cbind(x2,hi_flag=y2)
-
+test = cbind(x2,hi_flag = y2)
 ```
 
 # XGBoost
@@ -126,8 +191,11 @@ pred3 <- predict(xgb_model, testTask, type = "prob")
 
 pred3$data$response
 
-roc_xgboost3 <- roc(pred3$data$truth, pred3$data$prob.0) ## 0.7041
+roc_xgboost3 <- roc(pred3$data$truth, pred3$data$prob.0) 
 roc_xgboost3
+
+## 0.7041  final data with imputation
+## 0.6854  final data without imputation
 ```
 
 # Result submission
@@ -196,7 +264,7 @@ prob = pred4$data$prob.1
 output = cbind(ID = holdout_id, 
                SCORE = prob,  #or pred4$data$response (a column of probability)
                RANK = rank(-prob,ties.method = "last"))
-write.csv(output,"2022CaseCompetition_Yiru_Gong_20221004.csv",row.names = F)
+write.csv(output,"2022CaseCompetition_Yiru_Gong_20221009.csv",row.names = F)
 ```
 
 
