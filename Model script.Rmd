@@ -867,7 +867,7 @@ final2 = final2 %>%
 
 library(mlr)
 
-trainTask <- makeClassifTask(data = train2, target = "hi_flag", positive = 1)
+trainTask <- makeClassifTask(data = final2[rowTrain,], target = "hi_flag", positive = 1)
 testTask <- makeClassifTask(data = final2[-rowTrain,], target = "hi_flag")
 
 
@@ -884,7 +884,7 @@ xgb_learner <- makeLearner(
   )
 )
 
-xgb_model <- train(xgb_learner, task = trainTask)
+xgb_model <- mlr::train(xgb_learner, task = trainTask)
 ```
 
 
@@ -895,7 +895,7 @@ xgb_params <- makeParamSet(
   # The number of trees in the model (each one built sequentially)
   makeIntegerParam("nrounds", lower = 50, upper = 300),
   # number of splits in each tree
-  makeIntegerParam("max_depth", lower = 1, upper = 10),
+  makeIntegerParam("max_depth", lower = 1, upper = 30),
   # "shrinkage" - prevents overfitting
   makeNumericParam("eta", lower = .01, upper = .4),
   # L2 regularization - prevents overfitting
@@ -942,7 +942,7 @@ xgb_tuned_learner <- setHyperPars(
 )
 
 # Re-train parameters using tuned hyperparameters (and full training set)
-xgb_model <- train(xgb_tuned_learner, trainTask)
+xgb_model <- mlr::train(xgb_tuned_learner, trainTask)
 
 pred3 <- predict(xgb_model, testTask, type="prob")
 
@@ -952,6 +952,7 @@ roc_xgboost3 <- roc(pred3$data$truth, pred3$data$prob.1) ## 0.7268
 roc_xgboost3
 
 ```
+variable importance
 ```{r}
 
 #getFeatureImportance(xgb_model)
@@ -982,6 +983,31 @@ barplot(imp[1:20],
         col = colorRampPalette(colors = c("cyan","blue"))(10))
 
 ```
+roc
+
+```{r}
+df = generateThreshVsPerfData(pred3, measures = list(fpr, tpr, mmce))
+plotROCCurves(df)
+```
+
+```{r}
+plotThreshVsPerf(df)
+```
+
+pdps
+```{r}
+library(vip)
+library(pdp)
+library(lime)
+```
+
+```{r}
+# partial dependence plot
+mod <- getLearnerModel(xgb_model)  # EXTRACT THE MODEL!!  <<--
+partial(mod, pred.var = "dcsi_score", prob = TRUE, 
+        plot = TRUE, train = train2)
+```
+
 
 
 ### Model Examining
