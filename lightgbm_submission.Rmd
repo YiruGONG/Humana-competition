@@ -27,7 +27,7 @@ library(mice)
 # load("final_na_enlarged.Rdata")
 # load("balanced_data.Rdata") ## for balanced train data: data_rose
 load("final.Rdata") ## for original full dataset: final
-# cat_idx2 = c(cat_idx, 'metro')
+cat_idx2 = c(cat_idx, 'metro')
 
 ## training data
 # train = data_rose ##for balanced data
