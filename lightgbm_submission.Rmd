@@ -78,7 +78,7 @@ lgb.grid = list(objective = "binary",
                 max_depth = 2,
                 min_sum_hessian_in_leaf = 1,
                 feature_fraction = 0.2,
-                bagging_fraction = 0.7,
+                bagging_fraction = 0.9,
                 bagging_freq = 5,
                 min_data = 100,
                 max_bin = 50,
@@ -101,7 +101,7 @@ lgb.normalizedgini = function(preds, dtrain){
 start = Sys.time()
 start
 
-set.seed(1000)
+set.seed(1)
 lgb.model.cv = lgb.cv(params = lgb.grid, data = lgb_train, num_leaves = 25,
                   num_threads = 4 , nrounds = 3000, early_stopping_rounds = 50,
                   eval_freq = 20, eval = lgb.normalizedgini,
@@ -114,7 +114,7 @@ Sys.time() - start
 ```
 
 ```{r}
-set.seed(1000)
+set.seed(1)
 lgb.model = lgb.train(params = lgb.grid, data = lgb_train, learning_rate = 0.01, 
                       num_leaves = 25,num_threads = 2 , nrounds = best.iter,
                       eval_freq = 20, eval = lgb.normalizedgini,
@@ -282,12 +282,17 @@ updated: to tunned lightGBM
 
 ```{r}
 load("holdout_imp_final.Rdata")
+final_idx = colnames(select(final, -hi_flag))
+holdout = holdout_imp_final[,final_idx]
+```
+
+```{r}
 ## data input
 train_lgb = final %>%
   mutate(hi_flag = as.numeric(hi_flag)) %>%
   mutate_if(is.factor, as.numeric) %>%
   as.matrix()
-test_lgb = holdout_imp_final %>%
+test_lgb = holdout %>%
   mutate_if(is.factor, as.numeric) %>%
   as.matrix()
 colnames(train_lgb)
