@@ -866,10 +866,7 @@ library(mlr)
 #y2 = final$hi_flag[-rowTrain]
 
 
-train2 = train %>% 
-  mutate_if(is.factor,as.numeric) %>% 
-  mutate(hi_flag = as.factor(hi_flag))
-  
+
 
 final2 = final
 final2 = final2 %>% 
@@ -918,7 +915,7 @@ getParamSet("classif.xgboost")
 control <- makeTuneControlRandom(maxit = 1)
 
 set.seed(1)
-resample_desc <- makeResampleDesc("CV", iters = 4)
+resample_desc <- makeResampleDesc("CV", iters = 5)
 tuned_params <- tuneParams(
   learner = xgb_learner,
   task = trainTask,
@@ -1009,6 +1006,7 @@ pdps
 library(vip)
 library(pdp)
 library(lime)
+library(mmpf)
 ```
 
 ```{r}
@@ -1018,6 +1016,25 @@ partial(mod, pred.var = "dcsi_score", prob = TRUE,
         plot = TRUE, train = train2)
 ```
 
+```{r}
+lrn = makeLearner("regr.svm")
+fit = train(lrn, bh.task)
+pd = generatePartialDependenceData(fit, bh.task, "lstat")
+plotPartialDependence(pd, data = getTaskData(bh.task))
+xgb_model <- mlr::train(xgb_learner, task = trainTask)
+
+```
+
+```{r}
+pd = generatePartialDependenceData(xgb_model,trainTask)
+plotPartialDependence(pd, data = getTaskData(bh.task))
+```
+
+
+```{r}
+pdp = generatePartialDependenceData(xgb_model,trainTask,"rx_overall_pmpm_cost")
+plotPartialDependence(pdp, data = getTaskData(trainTask))
+```
 
 
 ### Model Examining
@@ -1034,6 +1051,7 @@ importance_matrix <- xgb.importance(names(final_matrix), model = xgboost_model)
 # Important plot 
 xgb.plot.importance(importance_matrix)
 ```
+
 
 
 ## Neural Networks
