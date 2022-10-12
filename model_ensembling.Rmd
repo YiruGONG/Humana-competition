@@ -37,10 +37,37 @@ roc(y2_lgb, average_pred)
 
 roc(y2_lgb, lgb_pred) #LightGBM 0.7343
 roc(y2_lgb, glmn_pred) #GLMN 0.7313
-roc(y2_lgb, pred3$data$prob.0)
+roc(y2_lgb, pred3$data$prob.0) #XGBoost 0.7054
+roc(y2_lgb,rf.pred) #random forest 0.703
 
 #AUC: 0.7267 (XGboost 0.7057, LightGBM 0.7343)
 #0.7329
 ```
+
+# Final Model Ensembling
+```{r}
+lightgbm = read.csv("2022CaseCompetition_Yiru_Gong_20221005.csv") %>% 
+  janitor::clean_names()
+
+lightgbm_pred = lightgbm$score
+
+load("glmn_pred_update.Rdata")
+updated_glmn_pred = glmn.pred
+
+final_avg = lightgbm_pred*0.2 + updated_glmn_pred*0.8
+
+holdout = read.csv("../2022_Competition_Holdout.csv") %>%
+  janitor::clean_names()
+holdout_id = holdout$id
+
+output = cbind(ID = holdout_id, 
+               SCORE = final_avg,
+               RANK = rank(-final_avg, ties.method = "last"))
+
+write.csv(output,"2022CaseCompetition_Yiru_Gong_20221012.csv",row.names = F)
+```
+
+
+
 
 

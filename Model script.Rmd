@@ -486,12 +486,25 @@ roc = 0.7312
 ## Random Forest
 
 ```{r}
+ctrl <- trainControl(method = "cv",
+                     summaryFunction = twoClassSummary,
+                     classProbs = TRUE)
+
 rf.grid <- expand.grid(mtry = 1:8,
                        splitrule = "gini",
                        min.node.size = seq(from = 2, to = 10,
                                            by = 2))
 
-rf.fit <- train(hi_flag ~ .,
+train_rf = final[rowTrain,] %>% 
+  mutate(hi_flag = as.factor(hi_flag) ) %>% 
+  mutate_if(is.factor,function(x) factor(x, labels = make.names(levels(x))))
+
+#test = final[-rowTrain,]
+test_rf = test %>% 
+  mutate(hi_flag = as.factor(hi_flag) ) %>% 
+  mutate_if(is.factor,function(x) factor(x, labels = make.names(levels(x))))
+
+rf.fit <- caret::train(hi_flag ~ .,
                 data = train_rf,
                 method = "ranger",
                 tuneGrid = rf.grid,
@@ -499,6 +512,11 @@ rf.fit <- train(hi_flag ~ .,
                 trControl = ctrl)
 
 #validation ROC: 0.7278
+
+save(rf.fit, file = "rf_fit.Rdata")
+
+rf.pred <- predict(rf.fit, newdata = test_rf, type = "prob")[,2]
+roc.rf <- roc(y2, rf.pred)
 
 ggplot(rf.fit, highlight = TRUE)
 ```
@@ -1243,7 +1261,7 @@ myPar <- list(superpose.symbol = list(col = myCol),
 plot(model.glmn, par.settings = myPar, xTrans = function(x) log(x))
 
 # save(model.glmn, test_rf, file = "tmp_glmn.Rdata")
-# load("tmp_glmn.Rdata")
+load("tmp_glmn.Rdata")
 ## test data prediction
 glmn.pred <- predict(model.glmn, newdata = holdout_rf, type = "prob")[,2]
 ```
