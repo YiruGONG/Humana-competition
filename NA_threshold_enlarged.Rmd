@@ -91,7 +91,7 @@ all_selected = cbind(select_features,cat) %>%
 impute = function(all_selected, cat_idx){
   start = Sys.time()
   print(start)
-  pmm = mice(all_selected, m = 5, method = "pmm")
+  pmm = mice(all_selected, m = 5, method ="cart") # "pmm")
   new_all = complete(pmm,"repeated",include = TRUE)
   ### get the mode of repeated imputations
   
@@ -127,7 +127,7 @@ save(new_imp,file = "full_imputed_enlarged.Rdata")
 ## feature engineering
 
 ```{r}
-new_imp_metro = all_selected %>% 
+new_imp_metro = new_imp %>% 
   mutate(metro = ifelse(grepl("Metro", rucc_category) , 1, 0),
          metro = as.factor(metro) )
 ```
@@ -155,5 +155,46 @@ save(final,rowTrain,cat_idx2,file = "final_na_enlarged.Rdata")
 # load("final_na_enlarged.Rdata")
 ```
 
+## holdout data imputation
 
+```{r}
+# holdout data manipulation
+all_feature = colnames(select(final,-hi_flag))
+new_feature = c('metro')
+# cat_idx2 = c(cat_idx,"metro")
+num_idx = setdiff(all_feature,cat_idx2)
+
+## feature selection
+holdout = read.csv("../2022_Competition_Holdout.csv") %>% 
+  janitor::clean_names()
+holdout[holdout=='null'] = NA
+holdout_id = holdout$id
+
+holdout = holdout %>% 
+  # mutate(metro = ifelse(grepl("Metro", rucc_category) , 1, 0),
+  #        metro = as.factor(metro) ) %>% 
+  select_at( setdiff(all_feature, new_feature) ) %>%
+  mutate_at(setdiff(cat_idx2, new_feature), as.factor) %>% 
+  mutate_at(num_idx,as.numeric)
+### view the NA condition
+h.na = sapply(holdout,function(x) sum(is.na(x)))
+h.na[which(h.na>0)]
+
+## imputation
+# train_holdout = rbind(cbind(all_selected[,colnames(holdout)],dataset = "train"),
+#                       cbind(holdout,dataset = "holdout"))
+# ds_index = train_holdout$dataset
+# th = train_holdout %>% select(-dataset) %>% as.data.frame()
+# th_imp = impute(th,cat_idx)
+# train_imp = impute(all_selected[,colnames(holdout)], cat_idx)
+holdout_imp = impute(holdout,cat_idx)
+```
+
+```{r}
+## feature engineering
+holdout_imp_final = holdout_imp %>% 
+  mutate(metro = ifelse(grepl("Metro", rucc_category) , 1, 0),
+         metro = as.factor(metro) )
+save(holdout_imp_final, file = "holdout_imputation.Rdata")
+```
 
