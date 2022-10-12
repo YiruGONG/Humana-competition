@@ -365,6 +365,8 @@ save(data_rose, file = "balanced_data.Rdata")
 * We choose ROSE as our method of data balancing
 * Final balanced dataset: data_rose
 
+
+
 # Final Balanced Data Set
 ```{r}
 load("balanced_data.Rdata") ## for balanced train data: data_rose
@@ -381,6 +383,13 @@ y = train$hi_flag
 test = final[-rowTrain,]
 x2 = final[-rowTrain,-1]   
 y2 = final$hi_flag[-rowTrain]
+
+```
+
+
+
+```{r}
+cor(final)
 
 ```
 
