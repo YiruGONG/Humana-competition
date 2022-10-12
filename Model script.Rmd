@@ -389,6 +389,7 @@ y2 = final$hi_flag[-rowTrain]
 
 
 ```{r}
+final$hi_flag = as.factor(final$hi_flag)
 cor(final)
 
 ```
