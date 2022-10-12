@@ -1,5 +1,5 @@
 ---
-title: "xgboost final model"
+title: "xgboost final model-jiaqi"
 author: "Jiaqi Chen"
 date: "2022-10-05"
 output: pdf_document
@@ -77,9 +77,15 @@ save(all_selected,file = "not_imputed.Rdata")
 # load("not_imputed.Rdata")
 #final = all_selected
 
+<<<<<<< HEAD:xgboost_final_model-jiaqi.Rmd
+# remove duplicated column names
+#duplicate = duplicated(colnames(final))
+#final = final[, !duplicate]
+=======
 # # remove duplicated column names
 # duplicate = duplicated(colnames(final))
 # final = final[, !duplicate]
+>>>>>>> 10da7943e4bbeaea86665377e54e9eb6dd181df7:xgboost_final_model.Rmd
 ```
 
 
@@ -96,18 +102,24 @@ save(all_selected,file = "not_imputed.Rdata")
 ## training data
 # load("balanced_data.Rdata")
 #train = data_rose %>% select(colnames(final))
+
+#x = train[-1]  
+#y = train$hi_flag 
+
+#train2 = train %>% 
+#  mutate_if(is.factor,as.numeric) %>% 
+#  mutate(hi_flag = as.factor(hi_flag))
 ```
 
 # train vs test dataset
 ```{r}
-train = final #train with unbalanced imputated dataset
 rowTrain <- createDataPartition(y = final$hi_flag,
                                 p = 0.7,
                                 list = FALSE)
-x = train[rowTrain,-1]  
+x = final[rowTrain,-1]  
 
 # x = train[-1]  #train with balanced data
-y = train$hi_flag  
+y = final$hi_flag  
 
 ## testing data
 x2 = final[-rowTrain,-1]   
@@ -117,18 +129,14 @@ test = cbind(x2,hi_flag = y2)
 
 # XGBoost
 ```{r}
-train2 = train %>% 
-  mutate_if(is.factor,as.numeric) %>% 
-  mutate(hi_flag = as.factor(hi_flag))
-  
-
 final2 = final
 final2 = final2 %>% 
-  mutate_if(is.factor,as.numeric) 
+  mutate_if(is.factor,as.numeric) %>% 
+  mutate(hi_flag = as.factor(hi_flag))
 
 library(mlr)
 
-trainTask <- makeClassifTask(data = train2, target = "hi_flag", positive = 1)
+trainTask <- makeClassifTask(data = final2[rowTrain,], target = "hi_flag", positive = 1)
 testTask <- makeClassifTask(data = final2[-rowTrain,], target = "hi_flag")
 
 set.seed(1)
@@ -151,11 +159,11 @@ xgb_model <- train(xgb_learner, task = trainTask)
 ```{r}
 xgb_params <- makeParamSet(
   # The number of trees in the model (each one built sequentially)
-  makeIntegerParam("nrounds", lower = 50, upper = 300),
+  makeIntegerParam("nrounds", lower = 200, upper = 600),
   # number of splits in each tree
   makeIntegerParam("max_depth", lower = 1, upper = 10),
   # "shrinkage" - prevents overfitting
-  makeNumericParam("eta", lower = .01, upper = .4),
+  makeNumericParam("eta", lower = .1, upper = .6),
   # L2 regularization - prevents overfitting
   makeNumericParam("lambda", lower = -1, upper = 0, trafo = function(x) 10^x)
 )
@@ -173,20 +181,7 @@ tuned_params <- tuneParams(
   control = control
 )
 
-# Result: nrounds=240; max_depth=3; eta=0.287; lambda=0.586 : mmce.test.mean=0.0452811
-# 0.7025
 
-# Result: nrounds=272; max_depth=1; eta=0.337; lambda=0.214 : mmce.test.mean=0.0438911
-# 0.737
-
-#balanced
-#[Tune] Result: nrounds=268; max_depth=4; eta=0.125; lambda=0.105 : mmce.test.mean=0.1142048
-# 0.9577
-
-# Result: nrounds=177; max_depth=10; eta=0.308; lambda=0.436 : mmce.test.mean=0.1156836
-
-#seed.1 [Tune] Result: nrounds=244; max_depth=3; eta=0.0639; lambda=0.206 : mmce.test.mean=0.1446276
-# 0.9537
 ```
 
 
@@ -207,8 +202,9 @@ pred3$data$response
 roc_xgboost3 <- roc(pred3$data$truth, pred3$data$prob.0) 
 roc_xgboost3
 
-## 0.7041  final data with imputation
-## 0.6854  final data without imputation
+## 0.7041  balanced data with imputation
+## 0.6854  balanced data without imputation
+## 0.7518  unbalanced data with imputation
 ```
 
 # Result submission
