@@ -389,6 +389,7 @@ y2 = final$hi_flag[-rowTrain]
 
 
 ```{r}
+final$hi_flag = as.factor(final$hi_flag)
 cor(final)
 
 ```
@@ -511,12 +512,25 @@ roc = 0.7312
 ## Random Forest
 
 ```{r}
+ctrl <- trainControl(method = "cv",
+                     summaryFunction = twoClassSummary,
+                     classProbs = TRUE)
+
 rf.grid <- expand.grid(mtry = 1:8,
                        splitrule = "gini",
                        min.node.size = seq(from = 2, to = 10,
                                            by = 2))
 
-rf.fit <- train(hi_flag ~ .,
+train_rf = final[rowTrain,] %>% 
+  mutate(hi_flag = as.factor(hi_flag) ) %>% 
+  mutate_if(is.factor,function(x) factor(x, labels = make.names(levels(x))))
+
+#test = final[-rowTrain,]
+test_rf = test %>% 
+  mutate(hi_flag = as.factor(hi_flag) ) %>% 
+  mutate_if(is.factor,function(x) factor(x, labels = make.names(levels(x))))
+
+rf.fit <- caret::train(hi_flag ~ .,
                 data = train_rf,
                 method = "ranger",
                 tuneGrid = rf.grid,
@@ -524,6 +538,11 @@ rf.fit <- train(hi_flag ~ .,
                 trControl = ctrl)
 
 #validation ROC: 0.7278
+
+save(rf.fit, file = "rf_fit.Rdata")
+
+rf.pred <- predict(rf.fit, newdata = test_rf, type = "prob")[,2]
+roc.rf <- roc(y2, rf.pred)
 
 ggplot(rf.fit, highlight = TRUE)
 ```
@@ -890,10 +909,7 @@ library(mlr)
 #y2 = final$hi_flag[-rowTrain]
 
 
-train2 = train %>% 
-  mutate_if(is.factor,as.numeric) %>% 
-  mutate(hi_flag = as.factor(hi_flag))
-  
+
 
 final2 = final
 final2 = final2 %>% 
@@ -942,7 +958,7 @@ getParamSet("classif.xgboost")
 control <- makeTuneControlRandom(maxit = 1)
 
 set.seed(1)
-resample_desc <- makeResampleDesc("CV", iters = 4)
+resample_desc <- makeResampleDesc("CV", iters = 5)
 tuned_params <- tuneParams(
   learner = xgb_learner,
   task = trainTask,
@@ -1033,6 +1049,7 @@ pdps
 library(vip)
 library(pdp)
 library(lime)
+library(mmpf)
 ```
 
 ```{r}
@@ -1042,6 +1059,25 @@ partial(mod, pred.var = "dcsi_score", prob = TRUE,
         plot = TRUE, train = train2)
 ```
 
+```{r}
+lrn = makeLearner("regr.svm")
+fit = train(lrn, bh.task)
+pd = generatePartialDependenceData(fit, bh.task, "lstat")
+plotPartialDependence(pd, data = getTaskData(bh.task))
+xgb_model <- mlr::train(xgb_learner, task = trainTask)
+
+```
+
+```{r}
+pd = generatePartialDependenceData(xgb_model,trainTask)
+plotPartialDependence(pd, data = getTaskData(bh.task))
+```
+
+
+```{r}
+pdp = generatePartialDependenceData(xgb_model,trainTask,"rx_overall_pmpm_cost")
+plotPartialDependence(pdp, data = getTaskData(trainTask))
+```
 
 
 ### Model Examining
@@ -1058,6 +1094,7 @@ importance_matrix <- xgb.importance(names(final_matrix), model = xgboost_model)
 # Important plot 
 xgb.plot.importance(importance_matrix)
 ```
+
 
 
 ## Neural Networks
@@ -1268,7 +1305,7 @@ myPar <- list(superpose.symbol = list(col = myCol),
 plot(model.glmn, par.settings = myPar, xTrans = function(x) log(x))
 
 # save(model.glmn, test_rf, file = "tmp_glmn.Rdata")
-# load("tmp_glmn.Rdata")
+load("tmp_glmn.Rdata")
 ## test data prediction
 glmn.pred <- predict(model.glmn, newdata = holdout_rf, type = "prob")[,2]
 ```

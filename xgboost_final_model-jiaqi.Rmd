@@ -75,23 +75,21 @@ all_selected = cbind(select_features,cat) %>%
 save(all_selected,file = "not_imputed.Rdata")
 
 # load("not_imputed.Rdata")
-#final = all_selected
+final = all_selected
 
-<<<<<<< HEAD:xgboost_final_model-jiaqi.Rmd
 # remove duplicated column names
 #duplicate = duplicated(colnames(final))
 #final = final[, !duplicate]
-=======
 # # remove duplicated column names
 # duplicate = duplicated(colnames(final))
 # final = final[, !duplicate]
->>>>>>> 10da7943e4bbeaea86665377e54e9eb6dd181df7:xgboost_final_model.Rmd
+
 ```
 
 
 # Final Dataset with imputation
 ```{r}
-# load("final.Rdata") ## for original full dataset: final
+load("final.Rdata") ## for original full dataset: final
 # load("balanced_data.Rdata")
 # train = data_rose
 ```
@@ -113,9 +111,9 @@ save(all_selected,file = "not_imputed.Rdata")
 
 # train vs test dataset
 ```{r}
-rowTrain <- createDataPartition(y = final$hi_flag,
-                                p = 0.7,
-                                list = FALSE)
+#rowTrain <- createDataPartition(y = final$hi_flag,
+#                                p = 0.7,
+#                                list = FALSE)
 x = final[rowTrain,-1]  
 
 # x = train[-1]  #train with balanced data
@@ -199,12 +197,16 @@ pred3 <- predict(xgb_model, testTask, type = "prob")
 
 pred3$data$response
 
-roc_xgboost3 <- roc(pred3$data$truth, pred3$data$prob.0) 
+pred3$data$prob.0
+
+roc_xgboost3 <- roc(pred3$data$truth, pred3$data$prob.0)
+
 roc_xgboost3
 
 ## 0.7041  balanced data with imputation
 ## 0.6854  balanced data without imputation
-## 0.7518  unbalanced data with imputation
+## 0.7190  unbalanced data with imputation
+## 0.6894  unbalanced data without imputation
 ```
 
 # Result submission
