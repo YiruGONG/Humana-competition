@@ -369,7 +369,7 @@ save(data_rose, file = "balanced_data.Rdata")
 
 # Final Balanced Data Set
 ```{r}
-load("balanced_data.Rdata") ## for balanced train data: data_rose
+# load("balanced_data.Rdata") ## for balanced train data: data_rose
 load("final.Rdata") ## for original full dataset: final 
 cat_idx2 = c(cat_idx, 'metro')
 
@@ -453,6 +453,31 @@ roc(y2, glm.pred)
 ```
 
 roc = 0.7246
+
+## SVM
+
+```{r}
+# SVM with Linear Kernal
+# ctrl1 <- trainControl(method = "cv")
+set.seed(1)
+svml.fit <- train(hi_flag ~ . , 
+                  data = train_rf, 
+                  method = "svmLinear",
+                  metric = "ROC",
+                  # preProcess = c("center", "scale"),
+                  tuneGrid = data.frame(C = exp(seq(-5,2,len=50))),
+                  trControl = ctrl)
+
+plot(svml.fit, highlight = TRUE, xTrans = log)
+svml.fit$bestTune
+
+## test data prediction
+svml.pred <- predict(svml.fit, newdata = test_rf, type = "prob")[,2]
+roc(y2, glmn.pred)
+
+save(svml.pred, file = "tmp_svml.Rdata")
+```
+
 
 ## glmnet
 
