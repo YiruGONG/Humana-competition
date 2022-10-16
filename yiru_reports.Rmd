@@ -6,12 +6,60 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(patchwork)
+library(gridExtra)
+library(ggpubr)
+
+load("final.Rdata")
+importance = read.csv("variable importance.csv")
 ```
 
-## fairness
+## subgroup analysis
 
 ```{r}
+top10 = importance$var[1:10]
+imp_cat = intersect(top10, cat_idx)
+imp_num = setdiff(top10, imp_cat)
+imp_df = final[,c(imp_var, "hi_flag")]
+
+var = imp_var[1]
+
+plot = list()
+i = 0
+for (var in top10){
+  i = i+1
+  if (var %in% imp_cat){
+    table(final$cons_stlindex)
+    plot[[i]] = final %>% 
+      group_by(across(all_of(var))) %>% 
+      summarize(
+        total = n(),
+        hi_flag_1 = sum(hi_flag=="1"),
+        perc = hi_flag_1/total
+      ) %>% 
+      rename(var =all_of(var) ) %>% 
+      ggplot(aes(var, perc)) +
+      geom_bar(stat = 'identity', fill = "steelblue")+
+      labs(x = var, y = "Percentage of Hi_flag = 1")
+  } else{
+    cmpr = list(c("0","1"))
+    plot[[i]] = final %>% 
+      select(all_of(var), hi_flag) %>% 
+      rename(var = var ) %>% 
+      ggplot(aes(hi_flag, var)) +
+      geom_boxplot()+
+      stat_compare_means(comparisons = cmpr, tip.length=0.01,
+         label = "p.signif", 
+         symnum.args = list(cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05, 1), 
+         symbols = c("****", "***", "**", "*", "ns")))+
+      labs(y = var)
+  }
+  
+}
+
+grid.arrange(grobs = plot)
 
 ```
+
 
